@@ -69,6 +69,15 @@
 
     .toolbar { display: flex; justify-content: space-between; align-items: center; margin-bottom: 10px; padding: 10px 12px; background: #eff6ff; border: 1px solid #bfdbfe; border-radius: 6px; flex-wrap: wrap; gap: 10px; }
     body.tema-verde .toolbar { background: #f0fdf4; border-color: #86efac; }
+    .autosave-chip { font-size: 0.72rem; font-weight: 700; color: #64748b; background: #f8fafc; border: 1px solid #e2e8f0; border-radius: 999px; padding: 3px 10px; white-space: nowrap; transition: color .2s ease, border-color .2s ease, background-color .2s ease; }
+    .autosave-chip.ok { color: #166534; background: #f0fdf4; border-color: #86efac; }
+    .autosave-chip.err { color: #b91c1c; background: #fef2f2; border-color: #fecaca; }
+    .drop-overlay { position: fixed; inset: 0; z-index: 2000; display: flex; align-items: center; justify-content: center; background: rgba(15, 23, 42, 0.55); backdrop-filter: blur(4px); -webkit-backdrop-filter: blur(4px); color: #ffffff; font-size: 1.1rem; font-weight: 800; text-align: center; padding: 20px; }
+    .tabla-partidas td.num-partida { cursor: grab; user-select: none; }
+    .tabla-partidas tr.fila-arrastrada { opacity: 0.45; }
+    .tabla-partidas tr.fila-drag-over td { box-shadow: inset 0 2px 0 0 var(--nsr-blue); }
+    @media screen { .toolbar { position: sticky; top: 8px; z-index: 50; box-shadow: 0 2px 10px rgba(15, 23, 42, 0.07); } }
+
     .btn-group { display: flex; gap: 6px; flex-wrap: wrap; }
     .btn { padding: 7px 11px; border-radius: 5px; border: none; font-weight: 700; font-size: 0.81rem; cursor: pointer; touch-action: manipulation; user-select: none; display: inline-flex; align-items: center; justify-content: center; gap: 4px; transition: background-color 0.15s ease, transform 0.08s ease; }
     .btn:active { transform: scale(0.98); }
@@ -131,7 +140,6 @@
     .btn-row-tool { background: #f1f5f9; color: #334155; border: 1px solid #cbd5e1; border-radius: 4px; padding: 3px 5px; cursor: pointer; font-weight: 700; font-size: 0.72rem; line-height: 1; touch-action: manipulation; transition: background-color 0.12s ease; }
     .btn-row-tool:hover { background: #e2e8f0; color: var(--nsr-dark); }
     .sug-desc mark { background: #fef08a; color: #0f172a; padding: 0 2px; border-radius: 2px; font-weight: 700; }
-    .kbd-hint { font-size: 0.72rem; color: #64748b; background: #f8fafc; border: 1px solid #e2e8f0; border-radius: 4px; padding: 2px 6px; font-weight: 600; }
 
     .tabla-partidas td.col-partida, .tabla-partidas td.col-importe { background: #f8fafc; font-weight: 700; color: var(--text); }
     .div-desc { width: 100%; min-height: 34px; padding: 4px 8px; font-size: 0.92rem; font-family: 'Segoe UI', Arial, sans-serif; line-height: 1.42; white-space: pre-wrap; word-break: break-word; outline: none; border: none !important; color: var(--text); }
@@ -249,7 +257,7 @@
       *, *::before, *::after { transition: none !important; animation: none !important; box-shadow: none !important; text-shadow: none !important; filter: none !important; backdrop-filter: none !important; -webkit-print-color-adjust: exact !important; print-color-adjust: exact !important; }
       html, body, body.preview-mode { background: #ffffff !important; padding: 0 !important; margin: 0 !important; width: 100% !important; }
       .sheet, body.preview-mode .sheet { padding: 0 !important; margin: 0 !important; width: 100% !important; max-width: none !important; border: none !important; border-radius: 0 !important; box-shadow: none !important; }
-      .toolbar, .col-del, .btn-del-row, .floating-preview-bar, tr.fila-vacia, dialog, .toast { display: none !important; }
+      .toolbar, .drop-overlay, .col-del, .btn-del-row, .floating-preview-bar, tr.fila-vacia, dialog, .toast { display: none !important; }
       .table-scroll-wrap { overflow: visible !important; margin-bottom: 10px !important; }
       .tabla-partidas { min-width: 0 !important; width: 100% !important; }
       .tabla-partidas td.col-pu { background: transparent !important; }
@@ -392,11 +400,13 @@
       <button type="button" class="btn btn-outline" onclick="document.getElementById('inpImportarPDF').click()" title="Importar partidas (Descripción, Cantidad, Unidad, P. Unitario o P. UNIT. VENTA) y Cliente/Proyecto desde un PDF con texto, Excel (.xlsx) o CSV">📄 Importar PDF/Excel</button>
       <input type="file" id="inpImportarPDF" accept="application/pdf,.pdf,.xlsx,.csv" style="display:none;" onchange="importarPartidasDesdePDF(event)">
       <button type="button" class="btn btn-outline" onclick="exportarCotizacionCSV()" title="Descargar la cotización actual en formato CSV compatible con Excel">📊 Exportar CSV</button>
+      <button type="button" class="btn btn-outline" onclick="copiarResumenCotizacion()" title="Copia un resumen en texto plano (cliente, folio, partidas y total)">📋 Copiar</button>
       <button type="button" class="btn btn-outline" onclick="togglePreview()">👀 Previsualizar</button>
       <button type="button" class="btn btn-outline" onclick="imprimirConNombreEmpresa()">🖨️ Imprimir / PDF</button>
       <button type="button" class="btn btn-outline" onclick="guardarPDFEnCarpeta()" title="Genera el PDF y lo guarda directo en tu carpeta (subcarpeta PDF). La primera vez te pedirá elegir la carpeta; después la recuerda automáticamente.">💾 PDF en carpeta ·v2</button>
       <button type="button" class="btn btn-config" onclick="abrirConfigModal()">⚙️ Personalizar</button>
     </div>
+    <span class="autosave-chip" id="autosaveChip" title="Borrador guardado automáticamente en este navegador">Sin guardar</span>
   </div>
 
   <!-- TABLA DE PARTIDAS -->
@@ -519,6 +529,7 @@
 </ul></div>
 </div>
 
+<div id="dropOverlay" class="drop-overlay" hidden>📄 Suelta aquí el PDF / Excel / CSV para importar partidas</div>
 <div id="toast" class="toast" role="status" aria-live="polite">🏢 GRUPO NSR HVAC Y CONTROL S.A. DE C.V.</div>
 <div id="sugerencias" class="sug-box" role="listbox" aria-label="Productos del catálogo" hidden=""></div>
 
@@ -651,7 +662,7 @@
   </div>
 
   <div class="hist-search-bar" style="margin-top:10px;">
-    <input type="text" id="inpBuscarCatalogo" placeholder="🔍 Buscar por código, descripción, marca o unidad..." oninput="renderizarTablaCatalogoModal()">
+    <input type="text" id="inpBuscarCatalogo" placeholder="🔍 Buscar por código, descripción, marca o unidad..." oninput="buscarCatalogoDiferido()">
     <select id="selCategoriaCatalogo" class="currency-select" style="min-width:190px; padding:8px;" onchange="renderizarTablaCatalogoModal()">
       <option value="">Todas las especialidades</option>
     </select>
@@ -1601,6 +1612,21 @@
   }
 
 
+  function filaDragStart(e) {
+    const tr = e.target.closest("tr");
+    if (!tr) return;
+    tr.classList.add("fila-arrastrada");
+    if (e.dataTransfer) {
+      e.dataTransfer.effectAllowed = "move";
+      try { e.dataTransfer.setData("text/plain", "fila"); } catch (err) {}
+    }
+  }
+  function filaDragEnd(e) {
+    const tr = e.target.closest("tr");
+    if (tr) tr.classList.remove("fila-arrastrada");
+    document.querySelectorAll("#tbodyPartidas tr.fila-drag-over").forEach(x => x.classList.remove("fila-drag-over"));
+  }
+
   function agregarPartida(datos = null, omitirRecalculo = false) {
     const tbody = document.getElementById("tbodyPartidas");
     const tr = document.createElement("tr");
@@ -1621,7 +1647,7 @@
     const basePuVal = (datos && datos.basePu !== undefined && datos.basePu !== "") ? datos.basePu : "";
 
     tr.innerHTML = `
-      <td class="col-partida num-partida">1</td>
+      <td class="col-partida num-partida" draggable="true" title="Arrastra para reordenar la partida" ondragstart="filaDragStart(event)" ondragend="filaDragEnd(event)">1</td>
       <td class="col-desc">
         <div class="div-desc" contenteditable="true" role="textbox" aria-multiline="true" aria-label="Descripción de la partida" onpaste="pegarTextoLimpio(event)" oninput="alEditarDescripcion(this)" onkeydown="teclaSugerencias(event)" onblur="ocultarSugerenciasDiferido()" data-placeholder="Escribe aquí la descripción o código de la partida..."></div>
       </td>
@@ -1648,6 +1674,19 @@
     `;
     tr.querySelector(".div-desc").innerText = descTexto;
     tbody.appendChild(tr);
+    tr.addEventListener("dragover", (e) => { e.preventDefault(); tr.classList.add("fila-drag-over"); });
+    tr.addEventListener("dragleave", () => tr.classList.remove("fila-drag-over"));
+    tr.addEventListener("drop", (e) => {
+      e.preventDefault();
+      tr.classList.remove("fila-drag-over");
+      const desde = document.querySelector("#tbodyPartidas tr.fila-arrastrada");
+      if (!desde || desde === tr) return;
+      const cuerpo = document.getElementById("tbodyPartidas");
+      if (desde.compareDocumentPosition(tr) & Node.DOCUMENT_POSITION_FOLLOWING) cuerpo.insertBefore(desde, tr);
+      else cuerpo.insertBefore(desde, tr.nextElementSibling);
+      renumerar();
+      guardarBorradorActivo();
+    });
 
     if (!omitirRecalculo) {
       renumerar();
@@ -1820,7 +1859,11 @@
     return { subtotal, iva, total, totalEquipos, anticipo, avance };
   }
 
-  function aplicarTotalesAUI(totales) {
+  let _ultimosTotales = null;
+  let _totalAnimado = 0;
+  let _rafTotal = 0;
+
+  function pintarTotales(totales) {
     const { subtotal, iva, total, totalEquipos, anticipo, avance } = totales;
     document.getElementById("valSubtotal").textContent = fmtMoneda(subtotal);
     document.getElementById("valIva").textContent = fmtMoneda(iva);
@@ -1829,6 +1872,36 @@
     document.getElementById("valAnticipo").textContent = fmtMoneda(anticipo);
     document.getElementById("valAvance").textContent = fmtMoneda(avance);
     document.getElementById("txtImporteLetra").textContent = NumeroALetras(total);
+  }
+
+  function animarTotal(valor) {
+    const el = document.getElementById("valTotal");
+    if (!el) return;
+    cancelAnimationFrame(_rafTotal);
+    const reduce = window.matchMedia && window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+    if (reduce) { _totalAnimado = valor; el.textContent = fmtMoneda(valor); return; }
+    const desde = _totalAnimado;
+    const inicio = performance.now();
+    const duracion = 260;
+    const paso = (ahora) => {
+      const k = Math.min(1, (ahora - inicio) / duracion);
+      const v = desde + (valor - desde) * (1 - Math.pow(1 - k, 3));
+      el.textContent = fmtMoneda(r2(v));
+      if (k < 1) _rafTotal = requestAnimationFrame(paso);
+    };
+    _totalAnimado = valor;
+    _rafTotal = requestAnimationFrame(paso);
+  }
+
+  function aplicarTotalesAUI(totales) {
+    _ultimosTotales = totales;
+    pintarTotales(totales);
+    animarTotal(totales.total);
+  }
+
+  function fijarTotalesInmediatos() {
+    cancelAnimationFrame(_rafTotal);
+    if (_ultimosTotales) pintarTotales(_ultimosTotales);
   }
 
   function recalcular() {
@@ -1967,6 +2040,11 @@
       mostrarAvisoModal("Por favor ingresa un número de Folio antes de guardar.");
       return;
     }
+    const hayPartidas = Array.from(document.querySelectorAll("#tbodyPartidas tr")).some(filaTieneDatos);
+    if (!hayPartidas) {
+      mostrarAvisoModal("Agrega al menos una partida con descripción, cantidad o precio antes de guardar.");
+      return;
+    }
     const hist = obtenerHistorialGuardado();
     const idx = hist.findIndex(item => item.folio === actual.folio);
     const yaExistia = idx >= 0;
@@ -1987,16 +2065,32 @@
 
   let _tmrBorrador = null;
   let _avisoBorradorMostrado = false;
+  function mostrarEstadoBorrador(ok, err) {
+    const chip = document.getElementById("autosaveChip");
+    if (!chip) return;
+    if (err) { chip.textContent = "⚠ No se pudo guardar"; chip.className = "autosave-chip err"; return; }
+    const a = new Date();
+    const hh = String(a.getHours()).padStart(2, "0");
+    const mm = String(a.getMinutes()).padStart(2, "0");
+    const ss = String(a.getSeconds()).padStart(2, "0");
+    chip.textContent = "✓ Guardado " + hh + ":" + mm + ":" + ss;
+    chip.className = "autosave-chip ok";
+  }
+
   function guardarBorradorActivo(inmediato = false) {
     clearTimeout(_tmrBorrador);
     const escribir = () => {
-      try { localStorage.setItem(STORAGE_KEY_BORRADOR, JSON.stringify(recopilarDatosCotizacionActual())); }
-      catch (e) {
+      try {
+        localStorage.setItem(STORAGE_KEY_BORRADOR, JSON.stringify(recopilarDatosCotizacionActual()));
+        mostrarEstadoBorrador(true, false);
+      } catch (e) {
+        mostrarEstadoBorrador(false, true);
         if (!_avisoBorradorMostrado) { _avisoBorradorMostrado = true; mostrarToast("⚠️ No se puede guardar el borrador automático (almacenamiento lleno o bloqueado)."); }
       }
     };
     if (inmediato === true) escribir(); else _tmrBorrador = setTimeout(escribir, 400);
   }
+
   window.addEventListener("pagehide", () => guardarBorradorActivo(true));
   document.addEventListener("visibilitychange", () => { if (document.hidden) guardarBorradorActivo(true); });
 
@@ -2907,6 +3001,12 @@
         if (palabras.length && !palabras.every(w => it.n.includes(w))) return false;
         return true;
       });
+  }
+
+  let _tmrBuscarCat = null;
+  function buscarCatalogoDiferido() {
+    clearTimeout(_tmrBuscarCat);
+    _tmrBuscarCat = setTimeout(renderizarTablaCatalogoModal, 160);
   }
 
   function renderizarTablaCatalogoModal() {
@@ -4609,6 +4709,7 @@
   }
 
   function pdfRecopilarDatos() {
+    fijarTotalesInmediatos();
     const q = function(sel) { return document.querySelector(sel); };
     const txt = function(sel) { const el = q(sel); return el ? el.textContent.trim() : ""; };
     const monedaSel = q("#monedaSelect");
@@ -5031,6 +5132,7 @@
   }
 
   window.addEventListener("beforeprint", function() {
+    fijarTotalesInmediatos();
     document.title = obtenerTituloDocumentoPDF();
     sincronizarVigenciaTxt();
     ajustarTamanoNombreEmpresa(true);
@@ -5041,6 +5143,53 @@
     ajustarTamanoNombreEmpresa(false);
   });
 
+  function inicializarArrastreArchivos() {
+    const overlay = document.getElementById("dropOverlay");
+    let contador = 0;
+    window.addEventListener("dragenter", (e) => { e.preventDefault(); contador++; if (overlay) overlay.hidden = false; });
+    window.addEventListener("dragover", (e) => { e.preventDefault(); });
+    window.addEventListener("dragleave", (e) => { e.preventDefault(); contador = Math.max(0, contador - 1); if (contador === 0 && overlay) overlay.hidden = true; });
+    window.addEventListener("drop", (e) => {
+      e.preventDefault();
+      contador = 0;
+      if (overlay) overlay.hidden = true;
+      const file = e.dataTransfer && e.dataTransfer.files && e.dataTransfer.files[0];
+      if (!file) return;
+      importarPartidasDesdePDF({ target: { files: [file], value: "" } });
+    });
+  }
+
+  async function copiarResumenCotizacion() {
+    const d = recopilarDatosCotizacionActual();
+    const lineas = [
+      "COTIZACIÓN " + (d.folio || ""),
+      "Empresa: " + (d.empresa || ""),
+      "Fecha: " + (d.fecha || "") + "  ·  Vigencia: " + (d.vigencia || "") + " días",
+      "Cliente: " + (d.atencion || ""),
+      "Proyecto: " + (d.proyecto || ""),
+      "Moneda: " + (d.moneda || "MXN"),
+      "",
+      "Partidas:"
+    ];
+    (Array.isArray(d.partidas) ? d.partidas : []).forEach((p, i) => {
+      lineas.push((i + 1) + ". " + (p.descripcion || "") + " | Cant: " + (p.cantidad || "0") + " " + (p.unidad || "") + " | P.U.: $" + (p.basePu || "0"));
+    });
+    lineas.push("", "Total: " + (document.getElementById("valTotal")?.textContent || d.totalTexto || ""));
+    const texto = lineas.join("\n");
+    try {
+      await navigator.clipboard.writeText(texto);
+      mostrarToast("📋 Resumen copiado al portapapeles");
+    } catch (e) {
+      const ta = document.createElement("textarea");
+      ta.value = texto;
+      document.body.appendChild(ta);
+      ta.select();
+      try { document.execCommand("copy"); mostrarToast("📋 Resumen copiado al portapapeles"); }
+      catch (e2) { mostrarAvisoModal("No se pudo copiar al portapapeles."); }
+      document.body.removeChild(ta);
+    }
+  }
+
   window.onload = function() {
     const cfgGuardada = obtenerConfigActual();
     aplicarConfigEnDOM(cfgGuardada);
@@ -5048,6 +5197,7 @@
     actualizarContadorHistorial();
     cargarCatalogoGuardado();
     actualizarEtiquetaCarpeta();
+    inicializarArrastreArchivos();
 
     let borrador = null;
     try {
