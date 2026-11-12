@@ -1,0 +1,716 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Sistema de Contabilidad Automatizado — Impuestos</title>
+<meta name="description" content="Sistema de contabilidad automatizado: registro de ingresos y egresos, cálculo de ISR e IVA, recargos e importación de facturas XML/PDF/Excel del SAT.">
+<meta name="theme-color" content="#0f5132">
+<style>
+:root{--p:#0f5132;--p2:#198754;--bg:#f4f6f8;--card:#fff;--bor:#dde3e8;--tx:#212529;--mut:#6c757d;--red:#dc3545;--blu:#0d6efd}
+*{box-sizing:border-box;margin:0;padding:0}
+body{font-family:'Segoe UI',Arial,sans-serif;background:var(--bg);color:var(--tx);font-size:14px}
+header{background:linear-gradient(135deg,var(--p),var(--p2));color:#fff;padding:18px 24px;display:flex;flex-wrap:wrap;justify-content:space-between;align-items:center;gap:10px}
+header h1{font-size:20px}
+header .sub{font-size:12px;opacity:.85}
+.btn{border:0;border-radius:6px;padding:8px 14px;cursor:pointer;font-size:13px;background:#fff;color:var(--p);font-weight:600}
+.btn.sec{background:rgba(255,255,255,.15);color:#fff;border:1px solid rgba(255,255,255,.4)}
+.btn.sm{padding:4px 10px;font-size:12px}
+.btn.del{background:#fee;border:1px solid var(--red);color:var(--red)}
+nav{display:flex;flex-wrap:wrap;gap:6px;background:var(--card);border-bottom:1px solid var(--bor);padding:10px 24px;position:sticky;top:0;z-index:10}
+nav button{border:1px solid var(--bor);background:#fff;padding:9px 18px;border-radius:20px;cursor:pointer;font-size:13px;font-weight:600;color:var(--mut)}
+nav button.active{background:var(--p2);color:#fff;border-color:var(--p2)}
+main{max-width:1200px;margin:0 auto;padding:20px 24px 60px}
+section{display:none}
+section.active{display:block}
+.card{background:var(--card);border:1px solid var(--bor);border-radius:10px;padding:18px;margin-bottom:18px}
+.card h2{font-size:16px;margin-bottom:12px;color:var(--p)}
+.grid{display:grid;gap:12px}
+.g4{grid-template-columns:repeat(auto-fit,minmax(200px,1fr))}
+.g3{grid-template-columns:repeat(auto-fit,minmax(240px,1fr))}
+label{display:block;font-size:12px;color:var(--mut);margin-bottom:3px;font-weight:600}
+input,select{width:100%;padding:8px;border:1px solid var(--bor);border-radius:6px;font-size:13px}
+input:focus,select:focus{outline:2px solid var(--p2);border-color:var(--p2)}
+table{width:100%;border-collapse:collapse;font-size:13px}
+th{background:var(--p);color:#fff;padding:8px 6px;text-align:left;font-size:12px;white-space:nowrap}
+td{padding:7px 6px;border-bottom:1px solid var(--bor)}
+tr:hover td{background:#f0f7f3}
+.num{text-align:right;font-variant-numeric:tabular-nums}
+tfoot td{font-weight:700;background:#e9f5ee;border-top:2px solid var(--p2)}
+.neg{color:var(--red)}.pos{color:var(--p2)}
+.kpi{background:var(--card);border:1px solid var(--bor);border-left:4px solid var(--p2);border-radius:8px;padding:14px}
+.kpi .t{font-size:12px;color:var(--mut);font-weight:600}
+.kpi .v{font-size:20px;font-weight:700;margin-top:4px}
+.toast{position:fixed;bottom:20px;right:20px;background:var(--p);color:#fff;padding:12px 18px;border-radius:8px;box-shadow:0 4px 12px rgba(0,0,0,.25);opacity:0;transition:.3s;z-index:99;font-size:13px}
+.toast.show{opacity:1}
+.mut{color:var(--mut);font-size:12px}
+.bar{height:22px;background:#e9ecef;border-radius:5px;overflow:hidden;position:relative}
+.bar>div{height:100%;background:var(--p2)}
+@media(max-width:640px){main{padding:12px}th,td{padding:5px 4px;font-size:11px}}
+</style>
+</head>
+<body>
+<header>
+  <div>
+    <h1>📊 Sistema de Contabilidad Automatizado</h1>
+    <div class="sub" id="subtitle">Cálculo de ISR e IVA · Datos guardados en este navegador</div>
+  </div>
+  <div>
+    <button class="btn sec" onclick="exportJSON()">⬇ Respaldo JSON</button>
+    <button class="btn sec" onclick="document.getElementById('imp').click()">⬆ Importar respaldo</button>
+    <input type="file" id="imp" accept=".json" hidden onchange="importJSON(this)">
+    <button class="btn" onclick="exportCSV()">📄 CSV</button>
+  </div>
+</header>
+<nav>
+  <button class="active" data-t="resumen">Resumen</button>
+  <button data-t="ingresos">Ingresos</button>
+  <button data-t="egresos">Egresos</button>
+  <button data-t="isr">ISR</button>
+  <button data-t="iva">IVA</button>
+  <button data-t="importar">📥 Importar</button>
+</nav>
+<main>
+
+<section id="sec-resumen" class="active">
+  <div class="card">
+    <h2>⚙ Configuración del ejercicio</h2>
+    <div class="grid g4">
+      <div><label>Ejercicio fiscal (año)</label><input id="ejercicio" type="number" min="2000" max="2100" oninput="setEjercicio(this.value)"></div>
+      <div style="align-self:end"><button class="btn del" onclick="vaciarTodo()">🗑 Vaciar todos los datos (nuevo ejercicio)</button></div>
+    </div>
+    <p class="mut" style="margin-top:8px">El ejercicio se usa en los cálculos de recargos y en los archivos exportados. Antes de vaciar, descarga tu respaldo JSON.</p>
+  </div>
+  <div class="grid g4" id="kpis"></div>
+  <div class="card">
+    <h2>Flujo mensual (Ingresos vs Egresos)</h2>
+    <div id="chart"></div>
+  </div>
+  <div class="card">
+    <h2>Impuestos del ejercicio</h2>
+    <table id="tbl-res"></table>
+  </div>
+</section>
+
+<section id="sec-ingresos">
+  <div class="card">
+    <h2>Registrar ingreso (factura)</h2>
+    <div class="grid g3">
+      <div><label>Mes</label><select id="i-mes"></select></div>
+      <div><label>Fecha</label><input id="i-fec" type="date"></div>
+      <div><label>Factura</label><input id="i-fac" placeholder="F-001"></div>
+      <div><label>Cliente</label><input id="i-cli" placeholder="Nombre del cliente"></div>
+      <div><label>RFC cliente</label><input id="i-rfc" placeholder="RFC" style="text-transform:uppercase"></div>
+      <div><label>Subtotal (sin IVA)</label><input id="i-sub" type="number" step="0.01" min="0"></div>
+      <div><label>Retención ISR (10%)</label><select id="i-risr"><option value="0">No</option><option value="1">Sí</option></select></div>
+      <div><label>Retención IVA (2/3 del IVA)</label><select id="i-riva"><option value="0">No</option><option value="1">Sí</option></select></div>
+    </div>
+    <div style="margin-top:12px"><button class="btn" id="btn-ing" onclick="addIngreso()">＋ Agregar ingreso</button> <button class="btn" onclick="importarPDFMes('ing')">📥 Importar PDF del SAT (mes seleccionado)</button> <input type="file" id="pdf-ing" accept="application/pdf,.pdf" hidden multiple onchange="procesarPDFMes(this,'ing')"> <button class="btn del" id="cancel-ing" style="display:none" onclick="cancelEdit('ing')">✕ Cancelar edición</button></div>
+    <p class="mut" style="margin-top:8px">IVA 16% · Ret. ISR = 10% del subtotal · Ret. IVA = ⅔ del IVA (como en su hoja de Excel).</p>
+  </div>
+  <div class="card">
+    <h2>Facturas registradas</h2>
+    <div class="grid g3" style="margin-bottom:12px">
+      <div><label>🔎 Ver solo el mes</label><select id="fmes-ing" onchange="render()"></select></div>
+    </div>
+    <div style="overflow-x:auto"><table id="tbl-ing"></table></div>
+  </div>
+</section>
+
+<section id="sec-egresos">
+  <div class="card">
+    <h2>Registrar egreso (deducción autorizada)</h2>
+    <div class="grid g3">
+      <div><label>Mes</label><select id="e-mes"></select></div>
+      <div><label>Fecha</label><input id="e-fec" type="date"></div>
+      <div><label>Proveedor / Concepto</label><input id="e-con" placeholder="Proveedor"></div>
+      <div><label>RFC proveedor</label><input id="e-rfc" placeholder="RFC" style="text-transform:uppercase"></div>
+      <div><label>Importe (sin IVA)</label><input id="e-sub" type="number" step="0.01" min="0"></div>
+      <div><label>IVA acreditable</label><input id="e-iva" type="number" step="0.01" min="0" placeholder="16% automático"></div>
+      <div><label>¿Aplica IVA 16%?</label><select id="e-aiva"><option value="1">Sí</option><option value="0">No (exento/0%)</option></select></div>
+    </div>
+    <div style="margin-top:12px"><button class="btn" id="btn-egr" onclick="addEgreso()">＋ Agregar egreso</button> <button class="btn" onclick="importarPDFMes('egr')">📥 Importar PDF del SAT (mes seleccionado)</button> <input type="file" id="pdf-egr" accept="application/pdf,.pdf" hidden multiple onchange="procesarPDFMes(this,'egr')"> <button class="btn del" id="cancel-egr" style="display:none" onclick="cancelEdit('egr')">✕ Cancelar edición</button></div>
+  </div>
+  <div class="card">
+    <h2>Egresos registrados</h2>
+    <div class="grid g3" style="margin-bottom:12px">
+      <div><label>🔎 Ver solo el mes</label><select id="fmes-egr" onchange="render()"></select></div>
+    </div>
+    <div style="overflow-x:auto"><table id="tbl-egr"></table></div>
+  </div>
+</section>
+
+<section id="sec-isr">
+  <div class="card">
+    <h2>Cálculo de ISR (pagos provisionales acumulados)</h2>
+    <p class="mut" style="margin-bottom:10px">Se calcula automáticamente con las tablas mensuales acumuladas de su archivo (hoja "Tablas"). Pérdidas fiscales aplicables:</p>
+    <div class="grid g4" style="margin-bottom:12px">
+      <div><label>Pérdidas fiscales pendientes</label><input id="perdidas" type="number" step="0.01" min="0" value="0" oninput="save()"></div>
+    </div>
+    <div style="overflow-x:auto"><table id="tbl-isr"></table></div>
+  </div>
+  <div class="card">
+    <h2>Recargos y actualización (pago tardío)</h2>
+    <p class="mut" style="margin-bottom:10px">Si paga después del día 17 del mes siguiente: recargos 1.13% mensual y factor de actualización INPC.</p>
+    <div class="grid g3">
+      <div><label>Mes del impuesto</label><select id="r-mes" onchange="calcRecargos()"></select></div>
+      <div><label>Fecha de pago real</label><input type="date" id="r-fec" onchange="calcRecargos()"></div>
+      <div><label>INPC mes anterior al pago</label><input type="number" step="0.01" id="r-inpc1" value="1" oninput="calcRecargos()"></div>
+      <div><label>INPC mes anterior al que debió pagar</label><input type="number" step="0.01" id="r-inpc2" value="1" oninput="calcRecargos()"></div>
+    </div>
+    <div id="r-out" style="margin-top:14px"></div>
+  </div>
+</section>
+
+<section id="sec-iva">
+  <div class="card">
+    <h2>Cálculo de IVA</h2>
+    <div class="grid g4" style="margin-bottom:12px">
+      <div><label>IVA a favor del año anterior</label><input id="sdoAnt" type="number" step="0.01" min="0" value="0" oninput="save()"></div>
+    </div>
+    <div style="overflow-x:auto"><table id="tbl-iva"></table></div>
+    <p class="mut" style="margin-top:10px">Lógica: IVA por pagar = cobrado − acreditable − retenido (si ≥ 0). El saldo a favor se acumula y se acredita automáticamente contra meses posteriores.</p>
+  </div>
+</section>
+
+<!-- IMPORTAR -->
+<section id="sec-importar">
+  <div class="card">
+    <h2>Importar facturas (XML del SAT, PDF o Excel)</h2>
+    <div class="grid g4" style="margin-bottom:14px">
+      <div><label>Mi RFC (para clasificar facturas automáticamente)</label><input id="miRFC" placeholder="Ej. VACA721201JVA" style="text-transform:uppercase" oninput="setRFC(this.value)"></div>
+    </div>
+    <div id="drop" style="border:2px dashed var(--p2);border-radius:10px;padding:30px;text-align:center;cursor:pointer;background:#f6fbf8">
+      <div style="font-size:34px">📥</div>
+      <b>Arrastra aquí tus archivos</b> o haz clic para seleccionar<br>
+      <span class="mut">Acepta varios a la vez: .xml (CFDI del SAT) · .pdf · .xlsx / .xls / .csv (Excel)</span>
+    </div>
+    <input type="file" id="fileIn" multiple accept=".xml,.pdf,.xlsx,.xls,.csv" hidden>
+    <p class="mut" style="margin-top:10px">· <b>XML</b>: se leen folio, fecha, cliente/proveedor, subtotal, IVA y retenciones (100% exacto, recomendado).<br>· <b>PDF</b>: lectura aproximada del texto, revisa los valores en la vista previa.<br>· <b>Excel</b>: lee hojas "Ingresos" y "Egresos" con el formato de tu archivo original.<br>· Las facturas ya importadas no se duplican (se detecta por UUID/folio) y te avisa.</p>
+  </div>
+  <div class="card" id="prevCard" style="display:none">
+    <h2>Vista previa — revisa y confirma</h2>
+    <div style="margin-bottom:10px">
+      <button class="btn" onclick="confirmImport()">✔ Confirmar importación</button>
+      <button class="btn del" onclick="PREVIEW=[];renderPreview()">✕ Descartar todo</button>
+    </div>
+    <div style="overflow-x:auto"><table id="tbl-prev"></table></div>
+  </div>
+  <div class="card" id="logCard" style="display:none">
+    <h2>Resultado de la importación</h2>
+    <div id="log" class="mut"></div>
+  </div>
+</section>
+
+</main>
+<div class="toast" id="toast"></div>
+<script>
+const MESES=['ENERO','FEBRERO','MARZO','ABRIL','MAYO','JUNIO','JULIO','AGOSTO','SEPTIEMBRE','OCTUBRE','NOVIEMBRE','DICIEMBRE'];
+const TABLAS_ISR={"ENERO":[[0,0,0,0],[0.01,496.07,0,0.0192],[496.08,4210.41,9.52,0.064],[4210.42,7399.42,247.24,0.1088],[7399.43,8601.5,594.21,0.16],[8601.51,10298.35,786.54,0.1792],[10298.36,20770.29,1090.61,0.2136],[20770.3,32736.83,3327.42,0.2352],[32736.84,62500,6141.95,0.3],[62500.01,83333.33,15070.9,0.32],[83333.34,250000,21737.57,0.34],[250000.01,999999999,78404.23,0.35]],"FEBRERO":[[0,0,0,0],[0.01,992.14,0,0.0192],[992.15,8420.82,19.04,0.064],[8420.83,14798.84,494.48,0.1088],[14798.85,17203,1188.42,0.16],[17203.01,20596.7,1573.08,0.1792],[20596.71,41540.58,2181.22,0.2136],[41540.59,65473.66,6654.84,0.2352],[65473.67,125000,12283.9,0.3],[125000.01,166666.66,30141.8,0.32],[166666.67,500000,43475.14,0.34],[500000.01,999999999,156808.46,0.35]],"MARZO":[[0,0,0,0],[0.01,1488.21,0,0.0192],[1488.22,12631.23,28.56,0.064],[12631.24,22198.26,741.72,0.1088],[22198.27,25804.5,1782.63,0.16],[25804.51,30895.05,2359.62,0.1792],[30895.06,62310.87,3271.83,0.2136],[62310.88,98210.49,9982.26,0.2352],[98210.5,187500,18425.85,0.3],[187500.01,249999.99,45212.7,0.32],[250000,750000,65212.71,0.34],[750000.01,999999999,235212.69,0.35]],"ABRIL":[[0,0,0,0],[0.01,1984.28,0,0.0192],[1984.29,16841.64,38.08,0.064],[16841.65,29597.68,988.96,0.1088],[29597.69,34406,2376.84,0.16],[34406.01,41193.4,3146.16,0.1792],[41193.41,83081.16,4362.44,0.2136],[83081.17,130947.32,13309.68,0.2352],[130947.33,250000,24567.8,0.3],[250000.01,333333.32,60283.6,0.32],[333333.33,1000000,86950.28,0.34],[1000000.01,999999999,313616.92,0.35]],"MAYO":[[0,0,0,0],[0.01,2480.35,0,0.0192],[2480.36,21052.05,47.6,0.064],[21052.06,36997.1,1236.2,0.1088],[36997.11,43007.5,2971.05,0.16],[43007.51,51491.75,3932.7,0.1792],[51491.76,103851.45,5453.05,0.2136],[103851.46,163684.15,16637.1,0.2352],[163684.16,312500,30709.75,0.3],[312500.01,416666.65,75354.5,0.32],[416666.66,1250000,108687.85,0.34],[1250000.01,999999999,392021.15,0.35]],"JUNIO":[[0,0,0,0],[0.01,2976.42,0,0.0192],[2976.43,25262.46,57.12,0.064],[25262.47,44396.52,1483.44,0.1088],[44396.53,51609,3565.26,0.16],[51609.01,61790.1,4719.24,0.1792],[61790.11,124621.74,6543.66,0.2136],[124621.75,196420.98,19964.52,0.2352],[196420.99,375000,36851.7,0.3],[375000.01,499999.98,90425.4,0.32],[499999.99,1500000,130425.42,0.34],[1500000.01,999999999,470425.38,0.35]],"JULIO":[[0,0,0,0],[0.01,3472.49,0,0.0192],[3472.5,29472.87,66.64,0.064],[29472.88,51795.94,1730.68,0.1088],[51795.95,60210.5,4159.47,0.16],[60210.51,72088.45,5505.78,0.1792],[72088.46,145392.03,7634.27,0.2136],[145392.04,229157.81,23291.94,0.2352],[229157.82,437500,42993.65,0.3],[437500.01,583333.31,105496.3,0.32],[583333.32,1750000,152162.99,0.34],[1750000.01,999999999,548829.61,0.35]],"AGOSTO":[[0,0,0,0],[0.01,3968.56,0,0.0192],[3968.57,33683.28,76.16,0.064],[33683.29,59195.36,1977.92,0.1088],[59195.37,68812,4753.68,0.16],[68812.01,82386.8,6292.32,0.1792],[82386.81,166162.32,8724.88,0.2136],[166162.33,261894.64,26619.36,0.2352],[261894.65,500000,49135.6,0.3],[500000.01,666666.64,120567.2,0.32],[666666.65,2000000,173900.56,0.34],[2000000.01,999999999,627233.84,0.35]],"SEPTIEMBRE":[[0,0,0,0],[0.01,4464.63,0,0.0192],[4464.64,37893.69,85.68,0.064],[37893.7,66594.78,2225.16,0.1088],[66594.79,77413.5,5347.89,0.16],[77413.51,92685.15,7078.86,0.1792],[92685.16,186932.61,9815.49,0.2136],[186932.62,294631.47,29946.78,0.2352],[294631.48,562500,55277.55,0.3],[562500.01,749999.97,135638.1,0.32],[749999.98,2250000,195638.13,0.34],[2250000.01,999999999,705638.07,0.35]],"OCTUBRE":[[0,0,0,0],[0.01,4960.7,0,0.0192],[4960.71,42104.1,95.2,0.064],[42104.11,73994.2,2472.4,0.1088],[73994.21,86015,5942.1,0.16],[86015.01,102983.5,7865.4,0.1792],[102983.51,207702.9,10906.1,0.2136],[207702.91,327368.3,33274.2,0.2352],[327368.31,625000,61419.5,0.3],[625000.01,833333.3,150709,0.32],[833333.31,2500000,217375.7,0.34],[2500000.01,999999999,784042.3,0.35]],"NOVIEMBRE":[[0,0,0,0],[0.01,5456.77,0,0.0192],[5456.78,46314.51,104.72,0.064],[46314.52,81393.62,2719.64,0.1088],[81393.63,94616.5,6536.31,0.16],[94616.51,113281.85,8651.94,0.1792],[113281.86,228473.19,11996.71,0.2136],[228473.2,360105.13,36601.62,0.2352],[360105.14,687500,67561.45,0.3],[687500.01,916666.63,165779.9,0.32],[916666.64,2750000,239113.27,0.34],[2750000.01,999999999,862446.53,0.35]],"DICIEMBRE":[[0,0,0,0],[0.01,5952.84,0,0.0192],[5952.85,50524.92,114.29,0.064],[50524.93,88793.04,2966.91,0.1088],[88793.05,103218,7130.48,0.16],[103218.01,123580.2,9438.47,0.1792],[123580.21,249243.48,13087.37,0.2136],[249243.49,392841.96,39929.05,0.2352],[392841.97,750000,73703.41,0.3],[750000.01,1000000,180850.82,0.32],[1000000.01,3000000,260850.81,0.34],[3000000.01,999999999,940850.81,0.35]]};
+const IVA_TASA=0.16;
+let DB={ingresos:[],egresos:[],perdidas:0,sdoAnt:0,miRFC:'',importados:[],ejercicio:new Date().getFullYear()};
+let EDIT=null;
+function setEjercicio(v){const y=+v;if(y>=2000&&y<=2100){DB.ejercicio=y;persist();render();}}
+function cancelEdit(t){
+  if(t==='ing'){['i-fac','i-fec','i-cli','i-rfc','i-sub'].forEach(i=>document.getElementById(i).value='');EDIT=null;
+    document.getElementById('btn-ing').textContent='＋ Agregar ingreso';document.getElementById('cancel-ing').style.display='none';}
+  else{['e-fec','e-con','e-rfc','e-sub','e-iva'].forEach(i=>document.getElementById(i).value='');EDIT=null;
+    document.getElementById('btn-egr').textContent='＋ Agregar egreso';document.getElementById('cancel-egr').style.display='none';}
+}
+function vaciarTodo(){
+  if(!confirm('¿Borrar TODOS los ingresos, egresos e importaciones del ejercicio '+DB.ejercicio+'?'))return;
+  if(!confirm('Esta acción no se puede deshacer. Descarga antes tu respaldo JSON. ¿Continuar?'))return;
+  DB={ingresos:[],egresos:[],perdidas:0,sdoAnt:0,miRFC:DB.miRFC||'',importados:[],ejercicio:DB.ejercicio||new Date().getFullYear()};
+  persist();render();toast('Datos vaciados · Ejercicio '+DB.ejercicio+' listo');
+}
+function editIng(id){
+  const x=DB.ingresos.find(r=>r.id===id);if(!x)return;
+  document.getElementById('i-mes').value=x.mes;document.getElementById('i-fac').value=x.fac||'';
+  document.getElementById('i-fec').value=x.fec||'';document.getElementById('i-cli').value=x.cli||'';
+  document.getElementById('i-rfc').value=x.rfc||'';document.getElementById('i-sub').value=x.sub;
+  document.getElementById('i-risr').value=x.risr>0?'1':'0';document.getElementById('i-riva').value=x.riva>0?'1':'0';
+  EDIT={tipo:'ingreso',id};
+  document.getElementById('btn-ing').textContent='💾 Guardar cambios';
+  document.getElementById('cancel-ing').style.display='inline-block';
+  document.getElementById('sec-ingresos').scrollIntoView({behavior:'smooth'});
+}
+function editEgr(id){
+  const x=DB.egresos.find(r=>r.id===id);if(!x)return;
+  document.getElementById('e-mes').value=x.mes;document.getElementById('e-fec').value=x.fec||'';
+  document.getElementById('e-con').value=x.con||'';document.getElementById('e-rfc').value=x.rfc||'';document.getElementById('e-sub').value=x.sub;
+  document.getElementById('e-aiva').value=(Math.abs(x.iva-x.sub*IVA_TASA)<0.01)?'1':'0';
+  document.getElementById('e-iva').value=x.iva||0;
+  EDIT={tipo:'egreso',id};
+  document.getElementById('btn-egr').textContent='💾 Guardar cambios';
+  document.getElementById('cancel-egr').style.display='inline-block';
+  document.getElementById('sec-egresos').scrollIntoView({behavior:'smooth'});
+}
+
+function load(){try{const d=JSON.parse(localStorage.getItem('contab2027'));if(d)DB=Object.assign(DB,d);}catch(e){}}
+function persist(){localStorage.setItem('contab2027',JSON.stringify(DB));}
+function save(){DB.perdidas=+document.getElementById('perdidas').value||0;DB.sdoAnt=+document.getElementById('sdoAnt').value||0;persist();render();}
+function toast(m){const t=document.getElementById('toast');t.textContent=m;t.classList.add('show');setTimeout(()=>t.classList.remove('show'),2600);}
+const f=n=>(Math.round((+n||0)*100)/100).toLocaleString('es-MX',{minimumFractionDigits:2,maximumFractionDigits:2});
+
+function addIngreso(){
+  const mes=document.getElementById('i-mes').value, sub=+document.getElementById('i-sub').value;
+  if(!(sub>0))return toast('Capture el subtotal');
+  const iva=sub*IVA_TASA;
+  const reg={mes,fac:document.getElementById('i-fac').value,fec:document.getElementById('i-fec').value,
+    cli:document.getElementById('i-cli').value,rfc:(document.getElementById('i-rfc').value||'').toUpperCase().trim(),
+    sub,iva,total:sub+iva,risr:(+document.getElementById('i-risr').value)?sub*0.10:0,
+    riva:(+document.getElementById('i-riva').value)?iva*2/3:0};
+  if(EDIT&&EDIT.tipo==='ingreso'){
+    const x=DB.ingresos.find(r=>r.id===EDIT.id);
+    if(x)Object.assign(x,reg);
+    cancelEdit('ing');save();toast('Ingreso actualizado');return;
+  }
+  DB.ingresos.push(Object.assign({id:Date.now()},reg));
+  ['i-fac','i-fec','i-cli','i-rfc','i-sub'].forEach(i=>document.getElementById(i).value='');
+  save();toast('Ingreso agregado');
+}
+function addEgreso(){
+  const mes=document.getElementById('e-mes').value, sub=+document.getElementById('e-sub').value;
+  if(!(sub>0))return toast('Capture el importe');
+  const iva=(+document.getElementById('e-aiva').value)?sub*IVA_TASA:(+document.getElementById('e-iva').value||0);
+  const reg={mes,fec:document.getElementById('e-fec').value,con:document.getElementById('e-con').value,rfc:(document.getElementById('e-rfc').value||'').toUpperCase().trim(),sub,iva,total:sub+iva};
+  if(EDIT&&EDIT.tipo==='egreso'){
+    const x=DB.egresos.find(r=>r.id===EDIT.id);
+    if(x)Object.assign(x,reg);
+    cancelEdit('egr');save();toast('Egreso actualizado');return;
+  }
+  DB.egresos.push(Object.assign({id:Date.now()},reg));
+  ['e-fec','e-con','e-rfc','e-sub','e-iva'].forEach(i=>document.getElementById(i).value='');
+  save();toast('Egreso agregado');
+}
+function delIng(id){DB.ingresos=DB.ingresos.filter(x=>x.id!==id);save();}
+function delEgr(id){DB.egresos=DB.egresos.filter(x=>x.id!==id);save();}
+
+function aggMes(tipo,mes){
+  const arr=DB[tipo].filter(x=>x.mes===mes);
+  const r={sub:0,iva:0,total:0,risr:0,riva:0,n:arr.length};
+  arr.forEach(x=>{r.sub+=x.sub;r.iva+=x.iva;r.total+=x.total;r.risr+=x.risr||0;r.riva+=x.riva||0;});
+  return r;
+}
+
+function calcISR(){
+  let ingAc=0,dedAc=0,retAc=0,pagAnt=0,perd=DB.perdidas||0;const rows=[];
+  MESES.forEach((m,i)=>{
+    const ing=aggMes('ingresos',m),egr=aggMes('egresos',m);
+    ingAc+=ing.sub;dedAc+=egr.sub;retAc+=ing.risr;
+    let perdUsada=Math.min(perd,Math.max(ingAc-dedAc,0));perd-=perdUsada;
+    const resultado=Math.max(ingAc-dedAc-perdUsada,0);
+    const t=TABLAS_ISR[m];let li=0,cuota=0,tasa=0;
+    for(const b of t){if(resultado>=b[0]){li=b[0];cuota=b[2];tasa=b[3];}}
+    const exc=resultado-li, marginal=exc*tasa, causado=marginal+cuota;
+    const aPagar=Math.round(Math.max(causado-retAc-pagAnt,0)*100)/100;
+    rows.push({mes:m,ing:ing.sub,ded:egr.sub,ret:ing.risr,ingAc,dedAc,resultado,li,exc,tasa,marginal,cuota,causado,retAc,pagAnt,aPagar});
+    pagAnt+=aPagar;
+  });
+  return rows;
+}
+
+function calcIVA(){
+  let saldoFavorAnterior=DB.sdoAnt||0;const rows=[];
+  MESES.forEach(m=>{
+    const ing=aggMes('ingresos',m),egr=aggMes('egresos',m);
+    const cobrado=ing.iva, acreditable=egr.iva, retenido=ing.riva;
+    const dif=cobrado-acreditable-retenido;
+    const porPagar=Math.max(dif,0), aFavor=Math.max(-dif,0);
+    const sdoFavorAcum=saldoFavorAnterior+aFavor;
+    const acreditado=Math.min(porPagar,sdoFavorAcum);
+    const ivaPagar=porPagar-acreditado;
+    const sdoPorAcreditar=sdoFavorAcum-acreditado;
+    rows.push({mes:m,cobrado,acreditable,retenido,porPagar,aFavor,sdoFavorAcum,acreditado,ivaPagar,sdoPorAcreditar});
+    saldoFavorAnterior=sdoPorAcreditar;
+  });
+  return rows;
+}
+
+function render(){
+  const ej=document.getElementById('ejercicio');if(ej&&ej.value!=DB.ejercicio)ej.value=DB.ejercicio||new Date().getFullYear();
+  document.getElementById('subtitle').textContent='Cálculo de ISR e IVA · Ejercicio '+(DB.ejercicio||new Date().getFullYear())+' · Datos guardados en este navegador';
+  document.getElementById('perdidas').value=DB.perdidas||0;
+  document.getElementById('sdoAnt').value=DB.sdoAnt||0;
+  const isr=calcISR(),iva=calcIVA();
+  const fIngV=document.getElementById('fmes-ing')?document.getElementById('fmes-ing').value:'TODOS';
+  const fEgrV=document.getElementById('fmes-egr')?document.getElementById('fmes-egr').value:'TODOS';
+  const fIng=MESES.includes(fIngV)?fIngV:'TODOS';
+  const fEgr=MESES.includes(fEgrV)?fEgrV:'TODOS';
+  const ingShow=fIng==='TODOS'?DB.ingresos:DB.ingresos.filter(x=>x.mes===fIng);
+  const egrShow=fEgr==='TODOS'?DB.egresos:DB.egresos.filter(x=>x.mes===fEgr);
+  const totIng=DB.ingresos.reduce((s,x)=>s+x.total,0), totEgr=DB.egresos.reduce((s,x)=>s+x.total,0);
+  const isrAnual=isr.reduce((s,r)=>s+r.aPagar,0), ivaAnual=iva.reduce((s,r)=>s+r.ivaPagar,0);
+  document.getElementById('kpis').innerHTML=`
+    <div class="kpi"><div class="t">Ingresos (total con IVA)</div><div class="v pos">$${f(totIng)}</div></div>
+    <div class="kpi"><div class="t">Egresos (total con IVA)</div><div class="v neg">$${f(totEgr)}</div></div>
+    <div class="kpi"><div class="t">Utilidad bruta</div><div class="v">$${f(totIng-totEgr)}</div></div>
+    <div class="kpi"><div class="t">ISR a pagar (anual)</div><div class="v">$${f(isrAnual)}</div></div>
+    <div class="kpi"><div class="t">IVA a pagar (anual)</div><div class="v">$${f(ivaAnual)}</div></div>
+    <div class="kpi"><div class="t">IVA a favor (dic)</div><div class="v">$${f(iva[11].sdoPorAcreditar)}</div></div>`;
+  const max=Math.max(1,...MESES.map((m,i)=>Math.max(aggMes('ingresos',m).total,aggMes('egresos',m).total)));
+  document.getElementById('chart').innerHTML=MESES.map(m=>{
+    const i=aggMes('ingresos',m).total,e=aggMes('egresos',m).total;
+    return `<div style="display:flex;align-items:center;gap:8px;margin-bottom:5px">
+      <div style="width:80px;font-size:11px;color:var(--mut);text-align:right">${m.slice(0,3)}</div>
+      <div class="bar" style="flex:1;display:flex"><div style="width:${i/max*100}%;background:var(--p2)" title="Ingresos $${f(i)}"></div><div style="width:${e/max*100}%;background:var(--red)" title="Egresos $${f(e)}"></div></div>
+      <div style="width:110px;font-size:11px" class="num">$${f(i-e)}</div></div>`;
+  }).join('')+`<div class="mut">🟩 Ingresos · 🟥 Egresos · columna derecha: diferencia</div>`;
+  document.getElementById('tbl-res').innerHTML=`<thead><tr><th>Mes</th><th class="num">IVA cobrado</th><th class="num">IVA acreditable</th><th class="num">IVA retenido</th><th class="num">IVA a pagar</th><th class="num">ISR a pagar</th></tr></thead><tbody>`+
+    MESES.map((m,i)=>`<tr><td>${m}</td><td class="num">${f(iva[i].cobrado)}</td><td class="num">${f(iva[i].acreditable)}</td><td class="num">${f(iva[i].retenido)}</td><td class="num ${iva[i].ivaPagar?'':'pos'}">${f(iva[i].ivaPagar)}</td><td class="num">${f(isr[i].aPagar)}</td></tr>`).join('')+
+    `</tbody><tfoot><tr><td>TOTAL</td><td class="num">${f(iva.reduce((s,r)=>s+r.cobrado,0))}</td><td class="num">${f(iva.reduce((s,r)=>s+r.acreditable,0))}</td><td class="num">${f(iva.reduce((s,r)=>s+r.retenido,0))}</td><td class="num">${f(ivaAnual)}</td><td class="num">${f(isrAnual)}</td></tr></tfoot>`;
+  document.getElementById('tbl-ing').innerHTML=`<thead><tr><th>Mes</th><th>Fecha</th><th>Factura</th><th>Cliente</th><th>RFC</th><th class="num">Subtotal</th><th class="num">IVA</th><th class="num">Total c/IVA</th><th class="num">Ret. ISR</th><th class="num">Ret. IVA</th><th class="num">Gran total</th><th></th></tr></thead><tbody>`+
+    (ingShow.length?ingShow.map(x=>`<tr><td>${x.mes}</td><td>${x.fec||'—'}</td><td>${x.fac||'—'}</td><td>${x.cli||'—'}</td><td>${x.rfc||'—'}</td><td class="num">${f(x.sub)}</td><td class="num">${f(x.iva)}</td><td class="num">${f(x.total)}</td><td class="num">${f(x.risr)}</td><td class="num">${f(x.riva)}</td><td class="num"><b>${f(x.total-x.risr-x.riva)}</b></td><td><button class="btn sm" onclick="editIng(${x.id})">✎</button> <button class="btn sm del" onclick="delIng(${x.id})">✕</button></td></tr>`).join(''):`<tr><td colspan="12" class="mut">${fIng==='TODOS'?'Sin facturas registradas':'Sin facturas en '+fIng}</td></tr>`)+
+    `</tbody><tfoot><tr><td colspan="5">TOTAL ${fIng==='TODOS'?'AÑO':'DE '+fIng} (${ingShow.length})</td>${['sub','iva','total','risr','riva'].map(k=>`<td class="num">${f(ingShow.reduce((s,x)=>s+x[k],0))}</td>`).join('')}<td class="num">${f(ingShow.reduce((s,x)=>s+x.total-x.risr-x.riva,0))}</td><td></td></tr></tfoot>`;
+  document.getElementById('tbl-egr').innerHTML=`<thead><tr><th>Mes</th><th>Fecha</th><th>Proveedor</th><th>RFC</th><th class="num">Importe</th><th class="num">IVA</th><th class="num">Total</th><th></th></tr></thead><tbody>`+
+    (egrShow.length?egrShow.map(x=>`<tr><td>${x.mes}</td><td>${x.fec||'—'}</td><td>${x.con||'—'}</td><td>${x.rfc||'—'}</td><td class="num">${f(x.sub)}</td><td class="num">${f(x.iva)}</td><td class="num"><b>${f(x.total)}</b></td><td><button class="btn sm" onclick="editEgr(${x.id})">✎</button> <button class="btn sm del" onclick="delEgr(${x.id})">✕</button></td></tr>`).join(''):`<tr><td colspan="8" class="mut">${fEgr==='TODOS'?'Sin egresos registrados':'Sin egresos en '+fEgr}</td></tr>`)+
+    `</tbody><tfoot><tr><td colspan="4">TOTAL ${fEgr==='TODOS'?'AÑO':'DE '+fEgr} (${egrShow.length})</td><td class="num">${f(egrShow.reduce((s,x)=>s+x.sub,0))}</td><td class="num">${f(egrShow.reduce((s,x)=>s+x.iva,0))}</td><td class="num">${f(egrShow.reduce((s,x)=>s+x.total,0))}</td><td></td></tr></tfoot>`;
+  document.getElementById('tbl-isr').innerHTML=`<thead><tr><th>Concepto</th>${MESES.map(m=>`<th class="num">${m.slice(0,3)}</th>`).join('')}</tr></thead><tbody>`+
+    [['INGRESOS DEL MES',r=>r.ing],['DEDUCCIONES AUTORIZADAS',r=>r.ded],['ISR RETENIDO DEL MES',r=>r.ret],
+     ['INGRESOS ACUMULADOS',r=>r.ingAc],['(-) DEDUCCIONES ACUMULADAS',r=>r.dedAc],
+     ['(=) RESULTADO',r=>r.resultado],['(-) LÍMITE INFERIOR',r=>r.li],['(=) EXCEDENTE S/LÍMITE',r=>r.exc],
+     ['(*) % S/EXCEDENTE',r=>(r.tasa*100).toFixed(2)+'%'],['(=) IMPUESTO MARGINAL',r=>r.marginal],
+     ['(+) CUOTA FIJA',r=>r.cuota],['(=) IMPUESTO CAUSADO',r=>r.causado],
+     ['(-) ISR RETENIDO ACUM.',r=>r.retAc],['(-) PAGOS PROVISIONALES ANT.',r=>r.pagAnt],
+     ['(=) ISR A PAGAR',r=>r.aPagar,true]].map(([lab,fn,hl])=>
+      `<tr${hl?' style="background:#e9f5ee;font-weight:700"':''}><td>${lab}</td>${isr.map(r=>`<td class="num">${fn(r)}</td>`).join('')}</tr>`).join('')+'</tbody>';
+  document.getElementById('tbl-iva').innerHTML=`<thead><tr><th>Concepto</th>${MESES.map(m=>`<th class="num">${m.slice(0,3)}</th>`).join('')}</tr></thead><tbody>`+
+    [['IVA COBRADO',r=>r.cobrado],['(-) IVA ACREDITABLE',r=>r.acreditable],['(-) IVA RETENIDO',r=>r.retenido],
+     ['(=) IVA POR PAGAR DEL MES',r=>r.porPagar],['(=) IVA A FAVOR DEL MES',r=>r.aFavor],
+     ['SDO. FAVOR ACUMULADO',r=>r.sdoFavorAcum],['(-) ACREDITAMIENTO',r=>r.acreditado],
+     ['(=) IVA A PAGAR',r=>r.ivaPagar,true],['SDO. POR ACREDITAR',r=>r.sdoPorAcreditar]].map(([lab,fn,hl])=>
+      `<tr${hl?' style="background:#e9f5ee;font-weight:700"':''}><td>${lab}</td>${iva.map(r=>`<td class="num">${f(fn(r))}</td>`).join('')}</tr>`).join('')+'</tbody>';
+  calcRecargos();
+}
+
+function calcRecargos(){
+  const mes=document.getElementById('r-mes').value;
+  const mIdx=MESES.indexOf(mes);
+  const isr=mIdx>=0?calcISR()[mIdx]:null;
+  const fecStr=document.getElementById('r-fec').value;
+  const out=document.getElementById('r-out');
+  if(!isr||!fecStr){out.innerHTML='';return;}
+  const fec=new Date(fecStr+'T12:00:00');
+  const limite=new Date(DB.ejercicio||2027,mIdx+1,17);
+  const mesesRec=Math.max(0,Math.ceil((fec-limite)/(30*24*3600*1000)));
+  const factor=Math.trunc(((+document.getElementById('r-inpc1').value||1)/(+document.getElementById('r-inpc2').value||1)-1)*10000)/10000;
+  const base=isr.aPagar;
+  const actualizado=base*(1+Math.max(factor,0));
+  const recargos=actualizado*0.0113*mesesRec;
+  out.innerHTML=`<table><tbody>
+    <tr><td>ISR a pagar de ${mes}</td><td class="num"><b>$${f(base)}</b></td></tr>
+    <tr><td>Meses de recargos (límite: ${limite.toLocaleDateString('es-MX')})</td><td class="num">${mesesRec}</td></tr>
+    <tr><td>Factor de actualización (INPC)</td><td class="num">${(Math.max(factor,0)*100).toFixed(4)}%</td></tr>
+    <tr><td>Parte actualizada</td><td class="num">$${f(actualizado)}</td></tr>
+    <tr><td>Recargos (1.13% mensual)</td><td class="num">$${f(recargos)}</td></tr>
+    <tr style="background:#e9f5ee;font-weight:700"><td>TOTAL A PAGAR</td><td class="num">$${f(actualizado+recargos)}</td></tr>
+  </tbody></table>`;
+}
+
+function download(name,content,type){const a=document.createElement('a');a.href=URL.createObjectURL(new Blob([content],{type}));a.download=name;a.click();}
+function exportJSON(){download('contabilidad_'+(DB.ejercicio||2027)+'.json',JSON.stringify(DB,null,2),'application/json');toast('Respaldo descargado');}
+function exportCSV(){
+  let c=';REGISTRO DE INGRESOS '+(DB.ejercicio||2027)+'\n;Mes;Fecha;Factura;Cliente;RFC;Subtotal;IVA;Total;RetISR;RetIVA;GranTotal\n';
+  DB.ingresos.forEach(x=>c+=`;${x.mes};${x.fec||''};${x.fac};${x.cli};${x.rfc||''};${x.sub};${x.iva};${x.total};${x.risr};${x.riva};${x.total-x.risr-x.riva}\n`);
+  c+='\n;REGISTRO DE EGRESOS '+(DB.ejercicio||2027)+'\n;Mes;Fecha;Proveedor;RFC;Importe;IVA;Total\n';
+  DB.egresos.forEach(x=>c+=`;${x.mes};${x.fec};${x.con};${x.rfc||''};${x.sub};${x.iva};${x.total}\n`);
+  const isr=calcISR(),iva=calcIVA();
+  c+='\n;ISR MENSUAL\n;Mes;Ingresos;Deducciones;Impuesto causado;ISR a pagar\n';
+  isr.forEach(r=>c+=`;${r.mes};${r.ing};${r.ded};${r.causado};${r.aPagar}\n`);
+  c+='\n;IVA MENSUAL\n;Mes;Cobrado;Acreditable;Retenido;IVA a pagar;Saldo a favor\n';
+  iva.forEach(r=>c+=`;${r.mes};${r.cobrado};${r.acreditable};${r.retenido};${r.ivaPagar};${r.sdoPorAcreditar}\n`);
+  download('contabilidad_'+(DB.ejercicio||2027)+'.csv','\ufeff'+c,'text/csv');toast('CSV descargado');
+}
+function importJSON(inp){
+  const file=inp.files[0];if(!file)return;
+  const rd=new FileReader();
+  rd.onload=e=>{try{const d=JSON.parse(e.target.result);if(!d.ingresos||!d.egresos)throw 0;DB=Object.assign(DB,d);persist();render();toast('Datos importados');}catch(err){toast('Archivo no válido');}};
+  rd.readAsText(file);inp.value='';
+}
+
+// ================= IMPORTACIÓN =================
+let PREVIEW=[];
+function setRFC(v){DB.miRFC=(v||'').toUpperCase().trim();persist();}
+function loadScript(src){return new Promise((ok,no)=>{const s=document.createElement('script');s.src=src;s.onload=ok;s.onerror=no;document.head.appendChild(s);});}
+function mesDeFecha(f){const m=(f||'').match(/(\d{4})-(\d{2})/);return m&&+m[2]>=1&&+m[2]<=12?MESES[+m[2]-1]:MESES[0];}
+const LIMPIO=n=>+String(n||'').replace(/[^0-9.\-]/g,'')||0;
+
+function attr(tag,name){const m=tag.match(new RegExp('\\b'+name+'="([^"]*)"'));return m?m[1]:'';}
+function parseCFDI(txt){
+  const comp=txt.match(/<(?:[\w-]+:)?Comprobante\b[^>]*>/);if(!comp)return null;
+  const t=comp[0];
+  const sub=LIMPIO(attr(t,'SubTotal')),total=LIMPIO(attr(t,'Total'));
+  const fecha=attr(t,'Fecha'),serie=attr(t,'Serie'),folio=attr(t,'Folio'),tipo=attr(t,'TipoDeComprobante');
+  const em=txt.match(/<(?:[\w-]+:)?Emisor\b[^>]*>/),rec=txt.match(/<(?:[\w-]+:)?Receptor\b[^>]*>/);
+  if(!em||!rec)return null;
+  const emRFC=attr(em[0],'Rfc'),emNom=attr(em[0],'Nombre'),recRFC=attr(rec[0],'Rfc'),recNom=attr(rec[0],'Nombre');
+  const u=txt.match(/UUID="([^"]+)"/i);const uuid=u?u[1]:'';
+  let iva=0,rISR=0,rIVA=0;
+  const cierre=txt.match(/<\/(?:[\w-]+:)?Conceptos>([\s\S]*)$/);
+  const zonaIVA=cierre?cierre[1]:txt;
+  let sum=cierre?0:1;
+  for(const m of zonaIVA.matchAll(/<(?:[\w-]+:)?Traslado\b[^>]*Impuesto="002"[^>]*>/g)){const a=m[0];if(attr(a,'TipoFactor')==='Tasa')iva+=+attr(a,'Importe')||0;sum=1;}
+  if(!sum)for(const m of txt.matchAll(/<(?:[\w-]+:)?Traslado\b[^>]*Impuesto="002"[^>]*>/g)){const a=m[0];if(attr(a,'TipoFactor')==='Tasa')iva+=+attr(a,'Importe')||0;}
+  for(const m of zonaIVA.matchAll(/<(?:[\w-]+:)?Retencion\b[^>]*>/g)){const a=m[0],imp=attr(a,'Impuesto');if(imp==='001')rISR+=+attr(a,'Importe')||0;if(imp==='002')rIVA+=+attr(a,'Importe')||0;}
+  let tip='egreso';
+  if(DB.miRFC){tip=emRFC===DB.miRFC?'ingreso':'egreso';}
+  else if(tipo==='I'&&!recNom){tip='ingreso';}
+  return {tipo:tip,mes:mesDeFecha(fecha),fac:(serie?serie+'-':'')+folio,con:tip==='ingreso'?recNom:emNom,cli:recNom,sub,iva,rISR,rIVA,total,fec:(fecha||'').slice(0,10),uuid,origen:'XML',emRFC,recRFC};
+}
+
+async function parsePDF(buf){
+  try{await loadScript('https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js');}catch(e){throw new Error('No se pudo cargar el lector PDF (se requiere internet). Usa el XML del SAT, es más exacto.');}
+  pdfjsLib.GlobalWorkerOptions.workerSrc='https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js';
+  const pdf=await pdfjsLib.getDocument({data:buf}).promise;
+  let items=[];
+  for(let i=1;i<=pdf.numPages;i++){const p=await pdf.getPage(i);const c=await p.getTextContent();items.push(...c.items.map(x=>x.str).filter(s=>s&&s.trim()));}
+  const txt=items.join(' ');
+  const first=(re)=>{const m=txt.match(re);return m?m[1]:null;};
+  // --- importes: números de moneda sueltos; el total es el mayor y sub+IVA=total ---
+  const vals=items.map(s=>/^\$?\s?([\d,]+\.\d{2})$/.test(s.trim())?+RegExp.$1.replace(/,/g,''):null).filter(v=>v!==null);
+  let sub=0,iva=0,total=0;
+  if(vals.length){
+    total=Math.max(...vals);
+    let found=false;
+    for(let a=0;a<vals.length&&!found;a++)for(let b=a+1;b<vals.length&&!found;b++){
+      if(Math.abs(vals[a]+vals[b]-total)<0.02&&vals[a]<total&&vals[b]<total){sub=Math.max(vals[a],vals[b]);iva=Math.min(vals[a],vals[b]);found=true;}
+    }
+    if(!found){sub=Math.round(total/1.16*100)/100;iva=Math.round((total-sub)*100)/100;}
+  }
+  // --- fecha: ISO (SAT) o dd/mm/aaaa ---
+  const iso=txt.match(/(\d{4})-(\d{2})-(\d{2})(?:T|\s|$)/);
+  const ddm=txt.match(/(\d{2})\/(\d{2})\/(\d{4})/);
+  let fec='',mNum=0;
+  if(iso){fec=iso[1]+'-'+iso[2]+'-'+iso[3];mNum=+iso[2];}
+  else if(ddm){fec=ddm[3]+'-'+ddm[2]+'-'+ddm[1];mNum=+ddm[2];}
+  // --- folio: serie y folio como elementos contiguos ("MTY-A","103527") ---
+  let fac='';
+  for(let k=0;k<items.length-1;k++){
+    if(/^[A-Z0-9]{1,6}-[A-Z0-9]{1,4}$/.test(items[k])&&/^[\d,]{4,}$/.test(items[k+1])){fac=items[k]+'-'+items[k+1].replace(/,/g,'');break;}
+  }
+  if(!fac){const folio=first(/Folio\s*:?\s*([\d,]{4,})/);if(folio)fac=String(folio).replace(/,/g,'');}
+  const uuid=first(/folio fiscal\D{0,5}([0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12})/i)||first(/([0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12})/i);
+  const rfcM=first(/R\.?\s?F\.?\s?C\.?\s*:?\s*([A-ZÑ&0-9]{12,13})/i);
+  // --- nombre del proveedor: razón social con S.A. ---
+  let nombre='';
+  const rxSA=/([A-ZÑ&][A-ZÑ&\s,]{2,60}?S\.A\.)(?![A-ZÑ0-9])/g;
+  let mSA,matches=[];
+  while((mSA=rxSA.exec(txt)))matches.push(mSA[1]);
+  if(matches.length){
+    nombre=matches.sort((a,b)=>a.length-b.length)[0].replace(/\s+/g,' ').trim().split(' ').slice(-5).join(' ');
+    nombre=nombre.replace(/^\S\s/,'');
+    while(/^(DE|DEL|LA|EL|Y|A|EN|VISTA|O)\s/.test(nombre))nombre=nombre.replace(/^(DE|DEL|LA|EL|Y|A|EN|VISTA|O)\s/,'');
+    nombre=nombre.trim();
+  }
+  if(!nombre){
+    for(const s of items){
+      const t=s.trim();
+      if(t.length<5||/\d/.test(t)||/\*/.test(t))continue;
+      const letras=(t.match(/[A-ZÑ&]/g)||[]).length;
+      if(letras/Math.max(1,t.replace(/[^A-Za-zÑñ]/g,'').length)<0.85)continue;
+      if(/R\.?F\.?C|FACTURA|FOLIO|CERTIFIC|SAT|MONEDA|PAGO|TEL|FECHA|UUID|REGIMEN|USO|TIPO|CLAVE|UNIDAD|DESCRIP|IMPORTE|SUBTOTAL|IVA|TOTAL|MONTERREY|MEXICO|CDMX|CLIENTE|DIGITAL|EMPRESA|TRANSPORTE|PAQUETERIA|GUADALAJARA|CANCUN|OAXACA|TORREON|CHIHUAHUA|LEON|SANTA|AV\b|COL\b/i.test(t))continue;
+      nombre=t;break;
+    }
+  }
+  const mes= mNum>=1&&mNum<=12? MESES[mNum-1] : MESES[0];
+  return {tipo:'egreso',mes,fac,con:nombre,cli:'',sub,iva,rISR:0,rIVA:0,total,fec,uuid:uuid||('PDF-'+fac+'-'+total),origen:'PDF',emRFC:rfcM||''};
+}
+
+async function extraerTextoPDF(buf){
+  try{await loadScript('https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js');}catch(e){throw new Error('No se pudo cargar el lector PDF (se requiere internet).');}
+  pdfjsLib.GlobalWorkerOptions.workerSrc='https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js';
+  const pdf=await pdfjsLib.getDocument({data:buf}).promise;
+  let items=[];
+  for(let i=1;i<=pdf.numPages;i++){const p=await pdf.getPage(i);const c=await p.getTextContent();items.push(...c.items.map(x=>x.str));}
+  return items.filter(s=>s&&s.trim()).join(' ');
+}
+
+function parseSatConsultaPDF(txt,tipo){
+  const out=[];
+  const bloques=txt.split(/Folio Fiscal:\s*/i).slice(1);
+  if(!bloques.length)throw new Error('El PDF no parece una consulta de CFDI del SAT');
+  for(const b of bloques){
+    const uuid=(b.match(/([0-9A-Fa-f]{8}-[0-9A-Fa-f]{4}-[0-9A-Fa-f]{4}-[0-9A-Fa-f]{4}-[0-9A-Fa-f]{12})/)||[])[1]||'';
+    const rfcEmisor=(b.match(/RFC Emisor:\s*([A-ZÑ&0-9]{12,13})/i)||[])[1]||'';
+    const rfcReceptor=(b.match(/RFC Receptor:\s*([A-ZÑ&0-9]{12,13})/i)||[])[1]||'';
+    const nombres=[...b.matchAll(/Nombre o Raz[oó]n Social:\s*(.+?)\s*(?=RFC Receptor:|Fecha Emisi[oó]n:|Nombre o Raz[oó]n Social:)/gi)].map(m=>m[1].replace(/\s+/g,' ').trim());
+    const nomEmisor=nombres[0]||'',nomReceptor=nombres[1]||'';
+    const fecIso=(b.match(/Fecha Emisi[oó]n:\s*(\d{4})-(\d{2})-(\d{2})/)||[]);
+    const fec=fecIso?fecIso[1]+'-'+fecIso[2]+'-'+fecIso[3]:'';
+    const total=LIMPIO((b.match(/Total:\s*\$?([\d,]+\.\d{2})/)||[])[1]);
+    const estado=((b.match(/Estado del Comprobante:\s*(\S+)/i)||[])[1]||'').toUpperCase();
+    const efecto=((b.match(/Efecto del Comprobante:\s*(\S+)/i)||[])[1]||'').toUpperCase();
+    if(!fec||!(total>0))continue;
+    if(estado==='CANCELADO')continue;
+    const mesN=+fecIso[2];
+    if(!(mesN>=1&&mesN<=12))continue;
+    const sub=Math.round(total/(1+IVA_TASA)*100)/100;
+    const iva=Math.round((total-sub)*100)/100;
+    const reg={tipo,mes:MESES[mesN-1],fec,sub,iva,total,uuid,estado,efecto,rfcEmisor,rfcReceptor};
+    if(tipo==='ingreso'){reg.cli=nomReceptor||nomEmisor;reg.rfc=rfcReceptor||rfcEmisor;}
+    else{reg.con=nomEmisor||nomReceptor;reg.rfc=rfcEmisor||rfcReceptor;}
+    out.push(reg);
+  }
+  if(!out.length)throw new Error('No se encontraron CFDI vigentes con importe en el PDF');
+  return out;
+}
+
+function importarPDFMes(tipo){document.getElementById(tipo==='ing'?'pdf-ing':'pdf-egr').click();}
+
+async function procesarPDFMes(inp,tipo){
+  const files=[...inp.files];inp.value='';
+  if(!files.length)return;
+  const mesSel=document.getElementById(tipo==='ing'?'i-mes':'e-mes').value;
+  let agregados=0,otrosMeses=0,dups=0,err=0;
+  DB.importados=DB.importados||[];
+  for(const file of files){
+    try{
+      const txt=await extraerTextoPDF(await file.arrayBuffer());
+      const regs=parseSatConsultaPDF(txt,tipo==='ing'?'ingreso':'egreso');
+      for(const r of regs){
+        if(r.uuid&&DB.importados.includes(r.uuid)){dups++;continue;}
+        if(r.mes!==mesSel){otrosMeses++;continue;}
+        if(r.uuid)DB.importados.push(r.uuid);
+        if(tipo==='ing')DB.ingresos.push({id:Date.now()+Math.random(),mes:r.mes,fac:'',fec:r.fec,cli:r.cli,rfc:r.rfc,sub:r.sub,iva:r.iva,total:r.total,risr:0,riva:0});
+        else DB.egresos.push({id:Date.now()+Math.random(),mes:r.mes,fec:r.fec,con:r.con,rfc:r.rfc,sub:r.sub,iva:r.iva,total:r.total});
+        agregados++;
+      }
+    }catch(e){err++;toast('✖ '+file.name+': '+e.message);}
+  }
+  persist();render();
+  let m=agregados?('✔ '+agregados+' registro(s) del PDF agregados a '+mesSel):'No se agregaron registros de '+mesSel;
+  if(otrosMeses)m+=' · '+otrosMeses+' de otro mes omitidos (importa desde su mes)';
+  if(dups)m+=' · '+dups+' duplicados omitidos';
+  toast(m);
+}
+
+function esMes(v){const s=String(v||'').toUpperCase().trim();return MESES.find(m=>m.startsWith(s.slice(0,4))&&s.length>=3)||null;}
+function parseExcelFile(buf){
+  const wb=XLSX.read(buf,{type:'array',cellDates:true});
+  const out=[];
+  for(const name of wb.SheetNames){
+    const rows=XLSX.utils.sheet_to_json(wb.Sheets[name],{header:1,raw:true,defval:null});
+    if(/ingreso/i.test(name))parseIngSheet(rows,out);
+    else if(/egreso/i.test(name))parseEgrSheet(rows,out);
+  }
+  return out;
+}
+function findCol(row,re){for(let i=0;i<row.length;i++)if(re.test(String(row[i]||'')))return i;return -1;}
+function parseIngSheet(rows,out){
+  let mes=null,hdr=null;
+  for(const row of rows){
+    const m=row.find(c=>esMes(c));if(m)mes=esMes(m);
+    if(String(row.find(c=>/factura/i.test(String(c||'')))||'')&&/cliente/i.test(JSON.stringify(row))){
+      hdr={fac:findCol(row,/factura/i),cli:findCol(row,/cliente/i),sub:findCol(row,/subtotal/i),iva:findCol(row,/^iva/i),tot:findCol(row,/total con iva/i),risr:findCol(row,/ret.*isr/i),riva:findCol(row,/ret.*iva/i)};
+      if(hdr.fac<0||hdr.sub<0)hdr=null;continue;
+    }
+    if(!hdr||!mes)continue;
+    if(row.some(c=>/^total$/i.test(String(c||'').trim())))continue;
+    const sub=LIMPIO(row[hdr.sub]);
+    const fac=row[hdr.fac];
+    const iva=hdr.iva>=0?LIMPIO(row[hdr.iva]):0;
+    if(!(sub>0)&&!(iva>0))continue;
+    if(fac&&esMes(fac))continue;
+    const risr=hdr.risr>=0?LIMPIO(row[hdr.risr]):0,riva=hdr.riva>=0?LIMPIO(row[hdr.riva]):0;
+    out.push({tipo:'ingreso',mes,fac:String(fac||''),cli:String(row[hdr.cli]||''),sub,iva,rISR:risr,rIVA:riva,total:sub+iva,uuid:'XLS-'+mes+'-'+fac+'-'+sub,origen:'Excel'});
+  }
+}
+function parseEgrSheet(rows,out){
+  for(let r=0;r<rows.length;r++){
+    const row=rows[r];
+    if(!row.some(c=>/proveedor/i.test(String(c||''))))continue;
+    for(let c=0;c<row.length;c++){
+      if(!/fecha/i.test(String(row[c]||'')))continue;
+      let mes=null;
+      for(let u=r;u>=0&&mes===null;u--){const m=rows[u].slice(c,c+4).find(x=>esMes(x));if(m)mes=esMes(m);}
+      const iCon=c+1,iSub=c+2,iIva=c+3;
+      for(let d=r+1;d<rows.length;d++){
+        const dr=rows[d];if(!dr)break;
+        if(String(dr[c]||'').trim().toLowerCase() === 'total')break;
+        const sub=LIMPIO(dr[iSub]),con=dr[iCon];
+        if(!(sub>0)&&!con)continue;
+        const fec=dr[c] instanceof Date?dr[c].toISOString().slice(0,10):String(dr[c]||'');
+        const iva=LIMPIO(dr[iIva]);
+        out.push({tipo:'egreso',mes:mes||MESES[0],fac:'',con:String(con||''),cli:'',sub,iva,rISR:0,rIVA:0,total:sub+iva,fec,uuid:'XLS-'+(mes||'')+'-'+con+'-'+sub+'-'+fec,origen:'Excel'});
+      }
+    }
+  }
+}
+
+async function handleFiles(files){
+  const log=[];let n=0;
+  for(const file of files){
+    try{
+      let rows=[];
+      if(/\.xml$/i.test(file.name)){
+        const txt=await file.text();const p=parseCFDI(txt);
+        if(!p)throw new Error('No parece un CFDI válido');rows=[p];
+      }else if(/\.pdf$/i.test(file.name)){
+        rows=[await parsePDF(await file.arrayBuffer())];
+      }else if(/\.(xlsx|xls|csv)$/i.test(file.name)){
+        try{await loadScript('https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js');}catch(e){throw new Error('No se pudo cargar el lector de Excel (se requiere internet)');}
+        rows=parseExcelFile(new Uint8Array(await file.arrayBuffer()));
+      }else{throw new Error('Tipo de archivo no soportado');}
+      let dups=0;
+      const nuevos=rows.filter(p=>{if(!p||!(p.sub>0)&&!p.fac&&!p.con)return false;
+        if(DB.importados && DB.importados.includes(p.uuid)){dups++;log.push('⚠ '+file.name+': YA estaba importada ('+(p.fac||p.uuid)+'), se omitió');return false;}return true;});
+      nuevos.forEach(p=>PREVIEW.push(p));
+      if(dups&&!nuevos.length)toast('⚠ '+file.name+': ya estaba importada, se omitió');
+      log.push('✔ '+file.name+': '+nuevos.length+' registro(s) nuevo(s)'+(dups?' · '+dups+' duplicada(s) omitida(s)':''));n+=nuevos.length;
+    }catch(err){log.push('✖ '+file.name+': '+err.message);}
+  }
+  document.getElementById('logCard').style.display='block';
+  document.getElementById('log').innerHTML=log.map(l=>'<div>'+l+'</div>').join('');
+  renderPreview();
+  if(n)toast(n+' registro(s) listos para confirmar');
+}
+function renderPreview(){
+  const card=document.getElementById('prevCard');
+  if(!PREVIEW.length){card.style.display='none';return;}
+  card.style.display='block';
+  document.getElementById('tbl-prev').innerHTML=`<thead><tr><th>¿Importar?</th><th>Tipo</th><th>Mes</th><th>Factura</th><th>Cliente / Proveedor</th><th class="num">Subtotal</th><th class="num">IVA</th><th class="num">Ret. ISR</th><th class="num">Ret. IVA</th><th class="num">Total</th><th>Origen</th></tr></thead><tbody>`+
+  PREVIEW.map((p,i)=>`<tr><td><input type="checkbox" checked onchange="PREVIEW[${i}].ok=this.checked" style="width:auto"></td>
+  <td><select onchange="PREVIEW[${i}].tipo=this.value"><option value="ingreso"${p.tipo==='ingreso'?' selected':''}>Ingreso</option><option value="egreso"${p.tipo==='egreso'?' selected':''}>Egreso</option></select></td>
+  <td><select onchange="PREVIEW[${i}].mes=this.value">${MESES.map(m=>`<option${m===p.mes?' selected':''}>${m}</option>`).join('')}</select></td>
+  <td><input value="${p.fac||''}" onchange="PREVIEW[${i}].fac=this.value"></td>
+  <td><input value="${(p.tipo==='ingreso'?p.cli:p.con)||''}" onchange="PREVIEW[${i}]['${p.tipo==='ingreso'?'cli':'con'}']=this.value"></td>
+  <td><input type="number" step="0.01" value="${p.sub}" onchange="PREVIEW[${i}].sub=+this.value;PREVIEW[${i}].total=PREVIEW[${i}].sub+PREVIEW[${i}].iva;renderPreview()"></td>
+  <td><input type="number" step="0.01" value="${p.iva}" onchange="PREVIEW[${i}].iva=+this.value;PREVIEW[${i}].total=PREVIEW[${i}].sub+PREVIEW[${i}].iva;renderPreview()"></td>
+  <td><input type="number" step="0.01" value="${p.rISR||0}" onchange="PREVIEW[${i}].rISR=+this.value"></td>
+  <td><input type="number" step="0.01" value="${p.rIVA||0}" onchange="PREVIEW[${i}].rIVA=+this.value"></td>
+  <td class="num"><b>${f(p.total)}</b></td><td class="mut">${p.origen}</td></tr>`).join('')+'</tbody>';
+}
+function confirmImport(){
+  let n=0;
+  PREVIEW.filter(p=>p.ok!==false).forEach(p=>{
+    DB.importados=DB.importados||[];
+    if(p.uuid)DB.importados.push(p.uuid);
+    if(p.tipo==='ingreso')DB.ingresos.push({id:Date.now()+Math.random(),mes:p.mes,fac:p.fac,fec:p.fec||'',cli:p.cli,rfc:p.rfc||'',sub:p.sub,iva:p.iva,total:p.sub+p.iva,risr:p.rISR||0,riva:p.rIVA||0});
+    else DB.egresos.push({id:Date.now()+Math.random(),mes:p.mes,fec:p.fec||'',con:p.con||p.cli,rfc:p.rfc||'',sub:p.sub,iva:p.iva,total:p.sub+p.iva});
+    n++;
+  });
+  PREVIEW=[];renderPreview();persist();render();
+  toast(n+' registro(s) importados');
+}
+
+document.querySelectorAll('nav button').forEach(b=>b.onclick=()=>{
+  document.querySelectorAll('nav button').forEach(x=>x.classList.remove('active'));
+  document.querySelectorAll('section').forEach(x=>x.classList.remove('active'));
+  b.classList.add('active');document.getElementById('sec-'+b.dataset.t).classList.add('active');
+});
+MESES.forEach(m=>{['i-mes','e-mes','r-mes'].forEach(id=>{const o=document.createElement('option');o.value=o.textContent=m;document.getElementById(id).appendChild(o);});});
+['fmes-ing','fmes-egr'].forEach(id=>{const sel=document.getElementById(id);const t=document.createElement('option');t.value='TODOS';t.textContent='📅 Todos los meses';sel.appendChild(t);MESES.forEach(m=>{const o=document.createElement('option');o.value=o.textContent=m;sel.appendChild(o);});sel.value=MESES[new Date().getMonth()];});
+document.getElementById('r-fec').value='2027-02-17';
+['i-sub','e-sub','e-iva'].forEach(id=>document.getElementById(id).addEventListener('keydown',e=>{if(e.key==='Enter')e.target.closest('.card').querySelector('.btn').click();}));
+const dz=document.getElementById('drop'),fi=document.getElementById('fileIn');
+dz.onclick=()=>fi.click();
+fi.onchange=e=>{handleFiles([...e.target.files]);e.target.value='';};
+dz.ondragover=e=>{e.preventDefault();dz.style.background='#e6f4ea';};
+dz.ondragleave=()=>dz.style.background='#f6fbf8';
+dz.ondrop=e=>{e.preventDefault();dz.style.background='#f6fbf8';handleFiles([...e.dataTransfer.files]);};
+load();
+document.getElementById('miRFC').value=DB.miRFC||'';
+render();
+</script>
+</body>
+</html>
