@@ -1,0 +1,2185 @@
+<!DOCTYPE html>
+<html lang="es" data-theme="light">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Sistema de Contabilidad Automatizado — Impuestos SAT</title>
+<meta name="description" content="Sistema de contabilidad automatizado: registro de ingresos y egresos, cálculo de ISR e IVA, recargos e importación de facturas XML/PDF/Excel del SAT.">
+<meta name="theme-color" content="#064e3b">
+<!-- Fuentes modernas: Plus Jakarta Sans para UI y JetBrains Mono para cifras contables -->
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@500;600;700&family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+<style>
+:root {
+  --p: #064e3b;
+  --p-dark: #022c22;
+  --p2: #059669;
+  --p3: #10b981;
+  --p-soft: #ecfdf5;
+  --p-border: #a7f3d0;
+  --bg: #f8fafc;
+  --bg-elev: #f1f5f9;
+  --card: #ffffff;
+  --bor: #e2e8f0;
+  --bor-strong: #cbd5e1;
+  --tx: #0f172a;
+  --tx-sec: #334155;
+  --mut: #64748b;
+  --red: #e11d48;
+  --red-soft: #fff1f2;
+  --red-bor: #fecdd3;
+  --blu: #2563eb;
+  --blu-soft: #eff6ff;
+  --blu-bor: #bfdbfe;
+  --amb: #d97706;
+  --amb-soft: #fffbeb;
+  --amb-bor: #fde68a;
+  --row-hover: #f1f5f9;
+  --row-pagada: #ecfdf5;
+  --row-pagada-hover: #d1fae5;
+  --tfoot-bg: #f0fdf4;
+  --shadow-sm: 0 1px 2px 0 rgba(15, 23, 42, 0.04);
+  --shadow: 0 4px 6px -1px rgba(15, 23, 42, 0.06), 0 2px 4px -2px rgba(15, 23, 42, 0.04);
+  --shadow-lg: 0 10px 25px -3px rgba(15, 23, 42, 0.08), 0 4px 6px -4px rgba(15, 23, 42, 0.04);
+  --radius: 14px;
+  --radius-sm: 9px;
+}
+
+html[data-theme="dark"] {
+  --p: #065f46;
+  --p-dark: #022c22;
+  --p2: #10b981;
+  --p3: #34d399;
+  --p-soft: rgba(16, 185, 129, 0.12);
+  --p-border: rgba(16, 185, 129, 0.3);
+  --bg: #0b1120;
+  --bg-elev: #1e293b;
+  --card: #111827;
+  --bor: #1e293b;
+  --bor-strong: #334155;
+  --tx: #f8fafc;
+  --tx-sec: #cbd5e1;
+  --mut: #94a3b8;
+  --red: #fb7185;
+  --red-soft: rgba(244, 63, 94, 0.12);
+  --red-bor: rgba(244, 63, 94, 0.3);
+  --blu: #60a5fa;
+  --blu-soft: rgba(59, 130, 246, 0.12);
+  --blu-bor: rgba(59, 130, 246, 0.3);
+  --amb: #fbbf24;
+  --amb-soft: rgba(245, 158, 11, 0.12);
+  --amb-bor: rgba(245, 158, 11, 0.3);
+  --row-hover: rgba(30, 41, 59, 0.7);
+  --row-pagada: rgba(16, 185, 129, 0.12);
+  --row-pagada-hover: rgba(16, 185, 129, 0.2);
+  --tfoot-bg: rgba(16, 185, 129, 0.14);
+  --shadow-sm: 0 1px 2px 0 rgba(0, 0, 0, 0.3);
+  --shadow: 0 4px 12px -1px rgba(0, 0, 0, 0.4);
+  --shadow-lg: 0 12px 28px -4px rgba(0, 0, 0, 0.6);
+}
+
+* {
+  box-sizing: border-box;
+  margin: 0;
+  padding: 0;
+}
+
+body {
+  font-family: 'Plus Jakarta Sans', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+  background: var(--bg);
+  color: var(--tx);
+  font-size: 15px;
+  line-height: 1.5;
+  -webkit-font-smoothing: antialiased;
+  transition: background-color 0.25s ease, color 0.25s ease;
+}
+
+/* Header Ejecutivo */
+header {
+  background: linear-gradient(135deg, var(--p-dark) 0%, var(--p) 55%, #047857 100%);
+  color: #fff;
+  padding: 20px 32px;
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: space-between;
+  align-items: center;
+  gap: 16px;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+  box-shadow: var(--shadow);
+}
+
+header .brand-wrap {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+}
+
+header .brand-icon {
+  width: 44px;
+  height: 44px;
+  border-radius: 12px;
+  background: rgba(255, 255, 255, 0.14);
+  backdrop-filter: blur(8px);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 22px;
+  border: 1px solid rgba(255, 255, 255, 0.22);
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+}
+
+header h1 {
+  font-size: 21px;
+  font-weight: 800;
+  letter-spacing: -0.02em;
+  line-height: 1.2;
+}
+
+header .sub {
+  font-size: 13px;
+  color: rgba(255, 255, 255, 0.82);
+  font-weight: 500;
+  margin-top: 2px;
+}
+
+.header-actions {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px;
+}
+
+/* Botones */
+.btn {
+  border: 1px solid transparent;
+  border-radius: var(--radius-sm);
+  padding: 9px 16px;
+  cursor: pointer;
+  font-family: inherit;
+  font-size: 13.5px;
+  background: var(--p2);
+  color: #fff;
+  font-weight: 600;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  transition: all 0.18s ease;
+  box-shadow: var(--shadow-sm);
+  white-space: nowrap;
+}
+
+.btn:hover {
+  background: #047857;
+  transform: translateY(-1px);
+  box-shadow: 0 4px 12px rgba(5, 150, 105, 0.25);
+}
+
+.btn:active {
+  transform: translateY(0);
+}
+
+header .btn {
+  background: #ffffff;
+  color: #064e3b;
+  font-weight: 700;
+}
+
+header .btn:hover {
+  background: #f0fdf4;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.18);
+}
+
+.btn.sec {
+  background: rgba(255, 255, 255, 0.12);
+  color: #fff;
+  border: 1px solid rgba(255, 255, 255, 0.28);
+  backdrop-filter: blur(4px);
+  font-weight: 600;
+}
+
+.btn.sec:hover {
+  background: rgba(255, 255, 255, 0.22);
+  border-color: rgba(255, 255, 255, 0.45);
+}
+
+.btn.sm {
+  padding: 5px 10px;
+  font-size: 12.5px;
+  border-radius: 7px;
+}
+
+.btn.ghost {
+  background: var(--bg-elev);
+  color: var(--tx-sec);
+  border: 1px solid var(--bor);
+  box-shadow: none;
+}
+
+.btn.ghost:hover {
+  background: var(--bor);
+  color: var(--tx);
+}
+
+.btn.del {
+  background: var(--red-soft);
+  border: 1px solid var(--red-bor);
+  color: var(--red);
+  box-shadow: none;
+}
+
+.btn.del:hover {
+  background: var(--red);
+  color: #fff;
+  border-color: var(--red);
+}
+
+/* Barra de Navegación Sticky con Glassmorphism */
+nav {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  background: color-mix(in srgb, var(--card) 88%, transparent);
+  backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: blur(12px);
+  border-bottom: 1px solid var(--bor);
+  padding: 12px 32px;
+  position: sticky;
+  top: 0;
+  z-index: 30;
+  box-shadow: var(--shadow-sm);
+}
+
+nav button {
+  border: 1px solid transparent;
+  background: transparent;
+  padding: 9px 18px;
+  border-radius: 999px;
+  cursor: pointer;
+  font-family: inherit;
+  font-size: 14px;
+  font-weight: 600;
+  color: var(--mut);
+  transition: all 0.2s ease;
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+}
+
+nav button:hover {
+  color: var(--tx);
+  background: var(--bg-elev);
+}
+
+nav button.active {
+  background: var(--p2);
+  color: #fff;
+  border-color: var(--p2);
+  box-shadow: 0 3px 10px rgba(5, 150, 105, 0.28);
+}
+
+/* Contenedor Principal */
+main {
+  max-width: 1340px;
+  margin: 0 auto;
+  padding: 28px 32px 80px;
+}
+
+section {
+  display: none;
+  animation: fadeIn 0.22s ease;
+}
+
+section.active {
+  display: block;
+}
+
+@keyframes fadeIn {
+  from { opacity: 0; transform: translateY(4px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+/* Tarjetas */
+.card {
+  background: var(--card);
+  border: 1px solid var(--bor);
+  border-radius: var(--radius);
+  padding: 24px;
+  margin-bottom: 22px;
+  box-shadow: var(--shadow);
+  transition: border-color 0.2s ease, background-color 0.2s ease;
+}
+
+.card h2 {
+  font-size: 17px;
+  font-weight: 700;
+  margin-bottom: 16px;
+  color: var(--tx);
+  letter-spacing: -0.01em;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.card-subbox {
+  background: var(--bg);
+  border: 1px solid var(--bor);
+  border-radius: 12px;
+  padding: 18px;
+  margin-bottom: 18px;
+}
+
+/* Grids */
+.grid {
+  display: grid;
+  gap: 16px;
+}
+
+.g4 {
+  grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+}
+
+.g3 {
+  grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
+}
+
+.g2 {
+  grid-template-columns: repeat(auto-fit, minmax(340px, 1fr));
+}
+
+/* Formularios */
+label {
+  display: block;
+  font-size: 12.5px;
+  color: var(--tx-sec);
+  margin-bottom: 6px;
+  font-weight: 600;
+  letter-spacing: 0.01em;
+}
+
+input, select {
+  width: 100%;
+  padding: 10px 12px;
+  border: 1px solid var(--bor-strong);
+  border-radius: var(--radius-sm);
+  font-family: inherit;
+  font-size: 14px;
+  background: var(--card);
+  color: var(--tx);
+  transition: border-color 0.15s ease, box-shadow 0.15s ease;
+}
+
+input:focus, select:focus {
+  outline: none;
+  border-color: var(--p2);
+  box-shadow: 0 0 0 3px rgba(16, 185, 129, 0.18);
+}
+
+input[type="checkbox"] {
+  width: 17px;
+  height: 17px;
+  accent-color: var(--p2);
+  cursor: pointer;
+  vertical-align: middle;
+}
+
+/* Tablas Contables */
+.table-wrap {
+  overflow-x: auto;
+  border: 1px solid var(--bor);
+  border-radius: 12px;
+  background: var(--card);
+}
+
+table {
+  width: 100%;
+  border-collapse: separate;
+  border-spacing: 0;
+  font-size: 13.5px;
+}
+
+th {
+  background: var(--p);
+  color: #ffffff;
+  padding: 12px 12px;
+  text-align: left;
+  font-size: 12px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  white-space: nowrap;
+  border-bottom: 1px solid var(--p-dark);
+}
+
+td {
+  padding: 11px 12px;
+  border-bottom: 1px solid var(--bor);
+  color: var(--tx-sec);
+  vertical-align: middle;
+}
+
+tbody tr {
+  transition: background-color 0.12s ease;
+}
+
+tbody tr:last-child td {
+  border-bottom: none;
+}
+
+tbody tr:hover td {
+  background: var(--row-hover);
+}
+
+tr.pagada td {
+  background: var(--row-pagada);
+}
+
+tr.pagada:hover td {
+  background: var(--row-pagada-hover);
+}
+
+tr.anulada-row td {
+  background: var(--red-soft);
+  color: var(--red);
+  text-decoration: line-through;
+  opacity: 0.8;
+}
+
+/* Tipografía Monoespaciada para Números */
+.num {
+  text-align: right;
+  font-family: 'JetBrains Mono', monospace;
+  font-variant-numeric: tabular-nums;
+  font-size: 13px;
+  letter-spacing: -0.02em;
+}
+
+tfoot td {
+  font-weight: 700;
+  background: var(--tfoot-bg);
+  color: var(--tx);
+  border-top: 2px solid var(--p2);
+  padding: 13px 12px;
+}
+
+/* Primera columna sticky en tablas matriciales de 12 meses */
+.matrix-table th:first-child,
+.matrix-table td:first-child {
+  position: sticky;
+  left: 0;
+  z-index: 2;
+}
+
+.matrix-table th:first-child {
+  background: var(--p-dark);
+  z-index: 3;
+}
+
+.matrix-table td:first-child {
+  background: var(--card);
+  font-weight: 600;
+  color: var(--tx);
+  border-right: 1px solid var(--bor);
+  white-space: nowrap;
+}
+
+.matrix-table tr:hover td:first-child {
+  background: var(--row-hover);
+}
+
+.matrix-table tr.hl-row td {
+  background: var(--tfoot-bg) !important;
+  font-weight: 700 !important;
+  color: var(--tx) !important;
+  border-top: 1px solid var(--p2);
+  border-bottom: 1px solid var(--p2);
+}
+
+.neg { color: var(--red) !important; font-weight: 600; }
+.pos { color: var(--p2) !important; font-weight: 600; }
+
+/* Badges */
+.badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  padding: 3px 9px;
+  border-radius: 999px;
+  font-size: 11.5px;
+  font-weight: 700;
+  letter-spacing: 0.01em;
+  white-space: nowrap;
+}
+
+.badge-ok { background: var(--p-soft); color: var(--p2); border: 1px solid var(--p-border); }
+.badge-warn { background: var(--amb-soft); color: var(--amb); border: 1px solid var(--amb-bor); }
+.badge-info { background: var(--blu-soft); color: var(--blu); border: 1px solid var(--blu-bor); }
+.badge-del { background: var(--red-soft); color: var(--red); border: 1px solid var(--red-bor); }
+
+/* KPIs Ejecutivos en una sola línea */
+#kpis {
+  margin-bottom: 20px;
+  display: grid;
+  grid-template-columns: repeat(7, minmax(0, 1fr));
+  gap: 10px;
+}
+
+.kpi {
+  background: var(--card);
+  border: 1px solid var(--bor);
+  border-left: 4px solid var(--p2);
+  border-radius: 11px;
+  padding: 12px 13px;
+  box-shadow: var(--shadow-sm);
+  transition: transform 0.18s ease, box-shadow 0.18s ease;
+  display: flex;
+  flex-direction: column;
+  justify-content: space-between;
+  min-width: 0;
+}
+
+.kpi:hover {
+  transform: translateY(-2px);
+  box-shadow: var(--shadow);
+}
+
+.kpi .t {
+  font-size: 11px;
+  line-height: 1.25;
+  color: var(--mut);
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.02em;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.kpi .v {
+  font-family: 'JetBrains Mono', monospace;
+  font-size: clamp(14.5px, 1.25vw, 18.5px);
+  font-weight: 700;
+  margin-top: 6px;
+  letter-spacing: -0.04em;
+  color: var(--tx);
+  white-space: nowrap;
+}
+
+@media (max-width: 1100px) {
+  #kpis {
+    grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+  }
+}
+
+/* Toast Notification */
+.toast {
+  position: fixed;
+  bottom: 24px;
+  right: 24px;
+  background: var(--tx);
+  color: var(--card);
+  padding: 14px 22px;
+  border-radius: 12px;
+  box-shadow: var(--shadow-lg);
+  opacity: 0;
+  transform: translateY(12px);
+  pointer-events: none;
+  transition: all 0.28s cubic-bezier(0.16, 1, 0.3, 1);
+  z-index: 999;
+  font-size: 14px;
+  font-weight: 600;
+  border-left: 4px solid var(--p3);
+}
+
+.toast.show {
+  opacity: 1;
+  transform: translateY(0);
+}
+
+.mut {
+  color: var(--mut);
+  font-size: 13px;
+  line-height: 1.5;
+}
+
+/* Barras de Flujo Mensual Mejoradas */
+.chart-row {
+  display: grid;
+  grid-template-columns: 52px 1fr 130px 130px 135px;
+  align-items: center;
+  gap: 14px;
+  padding: 8px 12px;
+  border-radius: 8px;
+  transition: background-color 0.15s ease;
+}
+
+.chart-header {
+  display: grid;
+  grid-template-columns: 52px 1fr 130px 130px 135px;
+  align-items: center;
+  gap: 14px;
+  padding: 6px 12px 10px;
+  border-bottom: 1px solid var(--bor);
+  margin-bottom: 6px;
+  font-size: 11.5px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  color: var(--mut);
+}
+
+.chart-row:hover {
+  background: var(--bg-elev);
+}
+
+.chart-month {
+  font-size: 12.5px;
+  font-weight: 700;
+  color: var(--mut);
+  text-align: right;
+  letter-spacing: 0.03em;
+}
+
+.bar-dual {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  background: var(--bg-elev);
+  padding: 5px 8px;
+  border-radius: 8px;
+  border: 1px solid var(--bor);
+}
+
+.bar-track {
+  height: 10px;
+  width: 100%;
+  background: transparent;
+  border-radius: 99px;
+  overflow: hidden;
+  display: flex;
+  align-items: center;
+}
+
+.bar-fill-ing {
+  height: 100%;
+  background: linear-gradient(90deg, var(--p2), var(--p3));
+  border-radius: 99px;
+  transition: width 0.35s ease;
+  min-width: 2px;
+}
+
+.bar-fill-egr {
+  height: 100%;
+  background: linear-gradient(90deg, #e11d48, #fb7185);
+  border-radius: 99px;
+  transition: width 0.35s ease;
+  min-width: 2px;
+}
+
+/* Gráfico de Dona Modernizado (Ancho Completo) */
+.donut-layout {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: center;
+  gap: 44px;
+  padding: 10px 16px;
+}
+
+.donut {
+  width: 250px;
+  height: 250px;
+  border-radius: 50%;
+  position: relative;
+  box-shadow: inset 0 0 0 1px rgba(0,0,0,0.06), var(--shadow);
+  flex-shrink: 0;
+}
+
+.donut > div {
+  position: absolute;
+  inset: 22%;
+  background: var(--card);
+  border-radius: 50%;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  padding: 12px;
+  text-align: center;
+  box-shadow: var(--shadow-sm);
+  border: 1px solid var(--bor);
+}
+
+.leyenda {
+  list-style: none;
+  padding: 0;
+  flex: 1;
+  min-width: 300px;
+  max-width: 680px;
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+  gap: 10px;
+}
+
+.leyenda li {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  font-size: 13.5px;
+  padding: 11px 14px;
+  border-radius: 9px;
+  margin-bottom: 0;
+  background: var(--bg);
+  border: 1px solid var(--bor);
+}
+
+.leyenda .punto {
+  width: 12px;
+  height: 12px;
+  border-radius: 4px;
+  flex: 0 0 auto;
+}
+
+.leyenda .cant {
+  margin-left: auto;
+  font-family: 'JetBrains Mono', monospace;
+  font-variant-numeric: tabular-nums;
+  font-weight: 700;
+  font-size: 13px;
+}
+
+/* Dropzone de Importación */
+#drop {
+  border: 2px dashed var(--p2);
+  border-radius: var(--radius);
+  padding: 40px 24px;
+  text-align: center;
+  cursor: pointer;
+  background: var(--p-soft);
+  transition: all 0.2s ease;
+}
+
+#drop:hover {
+  border-color: var(--p);
+  transform: translateY(-1px);
+  box-shadow: var(--shadow);
+}
+
+@media (max-width: 768px) {
+  header { padding: 16px 18px; }
+  nav { padding: 10px 16px; gap: 6px; overflow-x: auto; flex-wrap: nowrap; }
+  nav button { padding: 8px 14px; font-size: 13px; flex-shrink: 0; }
+  main { padding: 16px 14px 60px; }
+  .card { padding: 16px; }
+  th, td { padding: 8px 8px; font-size: 12px; }
+  .chart-header { display: none; }
+  .chart-row { grid-template-columns: 44px 1fr 105px; gap: 8px; }
+  .chart-row .col-hide-sm { display: none; }
+}
+</style>
+</head>
+<body>
+
+<header>
+  <div class="brand-wrap">
+    <div class="brand-icon">📊</div>
+    <div>
+      <h1>Sistema de Contabilidad Automatizado</h1>
+      <div class="sub" id="subtitle">Cálculo de ISR e IVA · Datos guardados en este navegador</div>
+    </div>
+  </div>
+  <div class="header-actions">
+    <button class="btn sec" onclick="toggleTheme()" id="btn-theme" title="Cambiar tema claro/oscuro">🌙 Modo oscuro</button>
+    <button class="btn sec" onclick="exportJSON()">⬇ Respaldo JSON</button>
+    <button class="btn sec" onclick="document.getElementById('imp').click()">⬆ Importar respaldo</button>
+    <input type="file" id="imp" accept=".json" hidden onchange="importJSON(this)">
+    <button class="btn" onclick="exportCSV()">📄 Exportar CSV</button>
+    <button class="btn sec" onclick="deshacer()" title="Ctrl+Z">↩ Deshacer</button>
+  </div>
+</header>
+
+<nav>
+  <button class="active" data-t="resumen">📈 Resumen Ejecutivo</button>
+  <button data-t="ingresos">💵 Ingresos</button>
+  <button data-t="egresos">🧾 Egresos</button>
+  <button data-t="isr">⚖️ Cálculo ISR</button>
+  <button data-t="iva">🏦 Cálculo IVA</button>
+  <button data-t="importar">📥 Importar CFDI / Excel</button>
+</nav>
+
+<main>
+
+<!-- SECCIÓN RESUMEN -->
+<section id="sec-resumen" class="active">
+  <div class="card">
+    <h2>⚙️ Configuración del ejercicio fiscal</h2>
+    <div class="grid g4">
+      <div>
+        <label for="ejercicio">Ejercicio fiscal (año)</label>
+        <input id="ejercicio" type="number" min="2000" max="2100" oninput="setEjercicio(this.value)">
+      </div>
+      <div style="align-self:end">
+        <button class="btn del" onclick="vaciarTodo()">🗑 Vaciar todos los datos (nuevo ejercicio)</button>
+      </div>
+    </div>
+    <p class="mut" style="margin-top:10px">El ejercicio se usa en los cálculos de fechas límite, recargos y en los archivos exportados. Antes de vaciar para iniciar un año nuevo, descarga tu respaldo JSON.</p>
+  </div>
+
+  <div class="grid g4" id="kpis"></div>
+
+  <div class="card">
+    <div style="display:flex;align-items:center;justify-content:space-between;gap:12px;flex-wrap:wrap;margin-bottom:14px">
+      <h2 style="margin-bottom:0">🍩 Enfoque del mes — pendiente por deducir (Base ISR sin IVA)</h2>
+      <select id="mes-donut" onchange="renderDonut()" style="width:auto;font-size:13.5px;padding:7px 14px;font-weight:700"></select>
+    </div>
+    <div id="donut"></div>
+  </div>
+
+  <div class="card">
+    <div style="display:flex;align-items:center;justify-content:space-between;gap:12px;flex-wrap:wrap;margin-bottom:14px">
+      <h2 style="margin-bottom:0" id="chart-title">📊 Flujo mensual (Ingresos vs Egresos sin IVA)</h2>
+      <select id="modo-chart" onchange="render()" style="width:auto;font-size:13px;padding:6px 12px;font-weight:600">
+        <option value="sub">Importes sin IVA (coincide con gráfica circular / ISR)</option>
+        <option value="total">Importes con IVA (flujo total facturado)</option>
+      </select>
+    </div>
+    <div id="chart"></div>
+  </div>
+
+  <div class="card">
+    <h2>📅 Resumen de impuestos del ejercicio</h2>
+    <div class="table-wrap">
+      <table id="tbl-res"></table>
+    </div>
+  </div>
+</section>
+
+<!-- SECCIÓN INGRESOS -->
+<section id="sec-ingresos">
+  <div class="card">
+    <h2>💵 Registrar ingreso (factura emitida)</h2>
+    <div class="grid g4">
+      <div><label for="i-mes">Mes</label><select id="i-mes"></select></div>
+      <div><label for="i-fec">Fecha de emisión</label><input id="i-fec" type="date"></div>
+      <div><label for="i-fac">Folio / Factura</label><input id="i-fac" placeholder="Ej. F-001"></div>
+      <div><label for="i-cli">Cliente / Receptor</label><input id="i-cli" placeholder="Nombre o Razón Social"></div>
+      <div><label for="i-sub">Subtotal (sin IVA)</label><input id="i-sub" type="number" step="0.01" min="0" placeholder="0.00"></div>
+      <div><label for="i-risr">Retención ISR (10%)</label><select id="i-risr"><option value="0">No aplica</option><option value="1">Sí (10% Subtotal)</option></select></div>
+      <div><label for="i-riva">Retención IVA (2/3 del IVA)</label><select id="i-riva"><option value="0">No aplica</option><option value="1">Sí (10.6667%)</option></select></div>
+    </div>
+    <div style="margin-top:16px;display:flex;gap:10px;flex-wrap:wrap">
+      <button class="btn" id="btn-ing" onclick="addIngreso()">＋ Agregar ingreso</button>
+      <button class="btn del" id="cancel-ing" style="display:none" onclick="cancelEdit('ing')">✕ Cancelar edición</button>
+    </div>
+    <p class="mut" style="margin-top:10px">Cálculo automático: IVA 16% · Ret. ISR = 10% del subtotal · Ret. IVA = ⅔ del IVA (exactamente igual a tu hoja de cálculo).</p>
+  </div>
+
+  <div class="card">
+    <h2>📑 Facturas de ingresos registradas</h2>
+    <div class="card-subbox">
+      <h2 style="font-size:15.5px;margin-bottom:10px">📄 Importación directa PDF / XML del SAT (Ingresos)</h2>
+      <div class="grid g4">
+        <div><label for="mes-pdf-ing">Mes a asignar los CFDI</label><select id="mes-pdf-ing"></select></div>
+        <div style="align-self:end"><button class="btn" id="btn-pdf-ing">📄 Seleccionar PDF o XML de Ingresos</button></div>
+      </div>
+      <p class="mut" style="margin-top:10px">Se toma como ingreso cuando <b>RFC Emisor</b> coincide con tu <b>Mi RFC</b> (o si el comprobante es tipo "I - Ingreso"). Los CFDI importados desde aquí se asignan al mes seleccionado.</p>
+      <div id="pdf-ing-log" class="mut" style="display:none;margin-top:10px;padding:10px;background:var(--card);border-radius:8px;border:1px solid var(--bor)"></div>
+    </div>
+
+    <div class="grid g3" style="margin-bottom:16px">
+      <div><label for="fmes-ing">🔎 Filtrar por mes</label><select id="fmes-ing" onchange="render()"></select></div>
+      <div><label for="q-ing">🔍 Buscar por cliente o folio</label><input id="q-ing" type="search" placeholder="Escribe cliente, factura o fecha..." oninput="render()"></div>
+    </div>
+    <div class="table-wrap"><table id="tbl-ing"></table></div>
+  </div>
+</section>
+
+<!-- SECCIÓN EGRESOS -->
+<section id="sec-egresos">
+  <div class="card">
+    <h2>🧾 Registrar egreso (deducción autorizada)</h2>
+    <div class="grid g3">
+      <div><label for="e-mes">Mes</label><select id="e-mes"></select></div>
+      <div><label for="e-fec">Fecha</label><input id="e-fec" type="date"></div>
+      <div><label for="e-con">Proveedor / Concepto</label><input id="e-con" placeholder="Nombre del proveedor o gasto"></div>
+      <div><label for="e-sub">Importe / Subtotal (sin IVA)</label><input id="e-sub" type="number" step="0.01" min="0" placeholder="0.00" oninput="syncEgresoIVA()"></div>
+      <div><label for="e-aiva">¿Aplica IVA 16%?</label><select id="e-aiva" onchange="syncEgresoIVA()"><option value="1">Sí (16% automático)</option><option value="0">No (Exento / 0% / Manual)</option></select></div>
+      <div><label for="e-iva">IVA acreditable</label><input id="e-iva" type="number" step="0.01" min="0" placeholder="16% automático"></div>
+    </div>
+    <div style="margin-top:16px;display:flex;gap:10px;flex-wrap:wrap">
+      <button class="btn" id="btn-egr" onclick="addEgreso()">＋ Agregar egreso</button>
+      <button class="btn del" id="cancel-egr" style="display:none" onclick="cancelEdit('egr')">✕ Cancelar edición</button>
+    </div>
+  </div>
+
+  <div class="card">
+    <h2>📂 Egresos registrados</h2>
+    <div class="card-subbox">
+      <h2 style="font-size:15.5px;margin-bottom:10px">📄 Importación directa PDF / XML del SAT (Egresos)</h2>
+      <div class="grid g4">
+        <div><label for="mes-pdf-egr">Mes a asignar los CFDI</label><select id="mes-pdf-egr"></select></div>
+        <div style="align-self:end"><button class="btn" id="btn-pdf-egr">📄 Seleccionar PDF o XML de Egresos</button></div>
+      </div>
+      <p class="mut" style="margin-top:10px">Se toma como egreso cuando <b>RFC Receptor</b> coincide con tu <b>Mi RFC</b> (o si el comprobante es tipo "E - Egreso"). Los CFDI importados desde aquí se asignan al mes seleccionado.</p>
+      <div id="pdf-egr-log" class="mut" style="display:none;margin-top:10px;padding:10px;background:var(--card);border-radius:8px;border:1px solid var(--bor)"></div>
+    </div>
+
+    <div class="grid g3" style="margin-bottom:16px">
+      <div><label for="fmes-egr">🔎 Filtrar por mes</label><select id="fmes-egr" onchange="render()"></select></div>
+      <div><label for="q-egr">🔍 Buscar por proveedor o fecha</label><input id="q-egr" type="search" placeholder="Escribe proveedor o fecha..." oninput="render()"></div>
+    </div>
+    <div class="table-wrap"><table id="tbl-egr"></table></div>
+  </div>
+</section>
+
+<!-- SECCIÓN ISR -->
+<section id="sec-isr">
+  <div class="card">
+    <h2>⚖️ Cálculo de ISR (pagos provisionales acumulados)</h2>
+    <p class="mut" style="margin-bottom:14px">Se calcula automáticamente con las tarifas mensuales acumuladas oficiales (hoja "Tablas"). La primera columna permanece fija al desplazar horizontalmente:</p>
+    <div class="grid g4" style="margin-bottom:16px">
+      <div>
+        <label for="perdidas">Pérdidas fiscales de ejercicios anteriores pendientes de amortizar</label>
+        <input id="perdidas" type="number" step="0.01" min="0" value="0" oninput="save()">
+      </div>
+    </div>
+    <div class="table-wrap"><table id="tbl-isr" class="matrix-table"></table></div>
+  </div>
+
+  <div class="card">
+    <h2>🎯 Meta mensual: $0.00 de ISR (cálculo aislado por mes, sin arrastres)</h2>
+    <p class="mut" style="margin-bottom:14px">Cada mes se evalúa <b>únicamente con sus propios movimientos</b> (sin IVA, sin arrastres ni acumulados): resultado del mes = ingresos − egresos del mes. Si la tarifa mensual aplicada a ese resultado supera la retención ISR del mes, se muestra la <b>deducción adicional (sin IVA)</b> que, facturada dentro del mismo mes, lo deja en $0.00. Consulte a su contador antes de aplicar deducciones.</p>
+    <div class="table-wrap"><table id="tbl-meta"></table></div>
+  </div>
+
+  <div class="card">
+    <h2>⏱️ Calculadora de recargos y actualización (pago extemporáneo)</h2>
+    <p class="mut" style="margin-bottom:14px">Si realiza el pago después del día 17 del mes siguiente, se calcula el factor de actualización por INPC y la tasa mensual de recargos.</p>
+    <div class="grid g4">
+      <div><label for="r-mes">Mes del impuesto</label><select id="r-mes" onchange="calcRecargos()"></select></div>
+      <div><label for="r-fec">Fecha de pago real</label><input type="date" id="r-fec" onchange="calcRecargos()"></div>
+      <div><label for="r-inpc1">INPC mes anterior al pago</label><input type="number" step="0.0001" id="r-inpc1" value="1" oninput="calcRecargos()"></div>
+      <div><label for="r-inpc2">INPC mes anterior al que debió pagar</label><input type="number" step="0.0001" id="r-inpc2" value="1" oninput="calcRecargos()"></div>
+      <div>
+        <label for="r-tasa">Tasa mensual de recargos (%)</label>
+        <select id="r-tasa" onchange="calcRecargos()">
+          <option value="0.0113">1.13% mensual (Hoja Excel original)</option>
+          <option value="0.0147">1.47% mensual (Tasa SAT vigente mora)</option>
+        </select>
+      </div>
+    </div>
+    <div id="r-out" style="margin-top:18px" class="table-wrap"></div>
+  </div>
+</section>
+
+<!-- SECCIÓN IVA -->
+<section id="sec-iva">
+  <div class="card">
+    <h2>🏦 Cálculo definitivo mensual de IVA</h2>
+    <div class="grid g4" style="margin-bottom:16px">
+      <div>
+        <label for="sdoAnt">Saldo de IVA a favor del ejercicio anterior</label>
+        <input id="sdoAnt" type="number" step="0.01" min="0" value="0" oninput="save()">
+      </div>
+    </div>
+    <div class="table-wrap"><table id="tbl-iva" class="matrix-table"></table></div>
+    <p class="mut" style="margin-top:12px">Lógica fiscal: IVA por pagar = IVA cobrado − IVA acreditable − IVA retenido (si ≥ 0). El saldo a favor se acumula y se acredita automáticamente contra meses posteriores.</p>
+  </div>
+</section>
+
+<!-- SECCIÓN IMPORTAR -->
+<section id="sec-importar">
+  <div class="card">
+    <h2>📥 Centro de importación inteligente (XML CFDI SAT, PDF o Excel)</h2>
+    <div class="grid g3" style="margin-bottom:16px">
+      <div>
+        <label for="miRFC">Mi RFC (para clasificar automáticamente Ingresos vs Egresos)</label>
+        <input id="miRFC" placeholder="Ej. VACA721201JVA" style="text-transform:uppercase;font-family:'JetBrains Mono',monospace;font-weight:700" oninput="setRFC(this.value)">
+      </div>
+    </div>
+    <div id="drop">
+      <div style="font-size:40px;margin-bottom:8px">📥</div>
+      <div style="font-size:16px;font-weight:700;color:var(--tx)">Arrastra aquí tus archivos CFDI o haz clic para explorar</div>
+      <span class="mut">Soporta selección múltiple: <b>.xml</b> (CFDI 3.3 / 4.0 del SAT) · <b>.pdf</b> (Representación impresa) · <b>.xlsx / .xls / .csv</b></span>
+    </div>
+    <input type="file" id="fileIn" multiple accept=".xml,.pdf,.xlsx,.xls,.csv" hidden>
+    <div class="mut" style="margin-top:14px;display:grid;gap:4px">
+      <div>· <b>XML (100% exactitud recomendada)</b>: extrae UUID, fecha, serie/folio, RFC, razón social, subtotal, IVA trasladado y retenciones de ISR/IVA.</div>
+      <div>· <b>PDF del SAT</b>: extrae datos mediante lectura del texto; puedes verificar y ajustar cualquier monto en la vista previa antes de guardar.</div>
+      <div>· <b>Excel</b>: lee hojas "Ingresos" y "Egresos" con la estructura de tu plantilla contable.</div>
+      <div>· <b>Control anti-duplicados</b>: detecta automáticamente por Folio Fiscal (UUID) o combinación Folio/Fecha/Total si una factura ya está registrada.</div>
+    </div>
+  </div>
+
+  <div class="card" id="prevCard" style="display:none">
+    <h2>🔍 Vista previa de importación — revisa y confirma</h2>
+    <div style="margin-bottom:14px;display:flex;gap:10px;flex-wrap:wrap">
+      <button class="btn" onclick="confirmImport()">✔ Confirmar e importar seleccionados</button>
+      <button class="btn del" onclick="PREVIEW=[];renderPreview()">✕ Descartar vista previa</button>
+    </div>
+    <div class="table-wrap"><table id="tbl-prev"></table></div>
+  </div>
+
+  <div class="card" id="logCard" style="display:none">
+    <h2>📋 Bitácora de la última importación</h2>
+    <div id="log" class="mut" style="display:grid;gap:4px;font-family:'JetBrains Mono',monospace;font-size:12.5px"></div>
+  </div>
+</section>
+
+</main>
+
+<!-- Modal de confirmación personalizado (reemplaza confirm() bloqueante) -->
+<div id="custom-modal" style="display:none;position:fixed;inset:0;background:rgba(15,23,42,0.65);backdrop-filter:blur(4px);z-index:1000;align-items:center;justify-content:center;padding:20px">
+  <div class="card" style="max-width:440px;width:100%;margin:0;box-shadow:var(--shadow-lg)">
+    <h2 id="modal-title" style="color:var(--red)">⚠️ Confirmar acción</h2>
+    <p id="modal-msg" class="mut" style="font-size:14px;color:var(--tx-sec);margin-bottom:20px"></p>
+    <div style="display:flex;justify-content:flex-end;gap:10px">
+      <button class="btn ghost" id="modal-cancel">Cancelar</button>
+      <button class="btn del" id="modal-ok">Sí, continuar</button>
+    </div>
+  </div>
+</div>
+
+<div class="toast" id="toast"></div>
+
+<script>
+const MESES=['ENERO','FEBRERO','MARZO','ABRIL','MAYO','JUNIO','JULIO','AGOSTO','SEPTIEMBRE','OCTUBRE','NOVIEMBRE','DICIEMBRE'];
+const TABLAS_ISR={"ENERO":[[0,0,0,0],[0.01,496.07,0,0.0192],[496.08,4210.41,9.52,0.064],[4210.42,7399.42,247.24,0.1088],[7399.43,8601.5,594.21,0.16],[8601.51,10298.35,786.54,0.1792],[10298.36,20770.29,1090.61,0.2136],[20770.3,32736.83,3327.42,0.2352],[32736.84,62500,6141.95,0.3],[62500.01,83333.33,15070.9,0.32],[83333.34,250000,21737.57,0.34],[250000.01,999999999,78404.23,0.35]],"FEBRERO":[[0,0,0,0],[0.01,992.14,0,0.0192],[992.15,8420.82,19.04,0.064],[8420.83,14798.84,494.48,0.1088],[14798.85,17203,1188.42,0.16],[17203.01,20596.7,1573.08,0.1792],[20596.71,41540.58,2181.22,0.2136],[41540.59,65473.66,6654.84,0.2352],[65473.67,125000,12283.9,0.3],[125000.01,166666.66,30141.8,0.32],[166666.67,500000,43475.14,0.34],[500000.01,999999999,156808.46,0.35]],"MARZO":[[0,0,0,0],[0.01,1488.21,0,0.0192],[1488.22,12631.23,28.56,0.064],[12631.24,22198.26,741.72,0.1088],[22198.27,25804.5,1782.63,0.16],[25804.51,30895.05,2359.62,0.1792],[30895.06,62310.87,3271.83,0.2136],[62310.88,98210.49,9982.26,0.2352],[98210.5,187500,18425.85,0.3],[187500.01,249999.99,45212.7,0.32],[250000,750000,65212.71,0.34],[750000.01,999999999,235212.69,0.35]],"ABRIL":[[0,0,0,0],[0.01,1984.28,0,0.0192],[1984.29,16841.64,38.08,0.064],[16841.65,29597.68,988.96,0.1088],[29597.69,34406,2376.84,0.16],[34406.01,41193.4,3146.16,0.1792],[41193.41,83081.16,4362.44,0.2136],[83081.17,130947.32,13309.68,0.2352],[130947.33,250000,24567.8,0.3],[250000.01,333333.32,60283.6,0.32],[333333.33,1000000,86950.28,0.34],[1000000.01,999999999,313616.92,0.35]],"MAYO":[[0,0,0,0],[0.01,2480.35,0,0.0192],[2480.36,21052.05,47.6,0.064],[21052.06,36997.1,1236.2,0.1088],[36997.11,43007.5,2971.05,0.16],[43007.51,51491.75,3932.7,0.1792],[51491.76,103851.45,5453.05,0.2136],[103851.46,163684.15,16637.1,0.2352],[163684.16,312500,30709.75,0.3],[312500.01,416666.65,75354.5,0.32],[416666.66,1250000,108687.85,0.34],[1250000.01,999999999,392021.15,0.35]],"JUNIO":[[0,0,0,0],[0.01,2976.42,0,0.0192],[2976.43,25262.46,57.12,0.064],[25262.47,44396.52,1483.44,0.1088],[44396.53,51609,3565.26,0.16],[51609.01,61790.1,4719.24,0.1792],[61790.11,124621.74,6543.66,0.2136],[124621.75,196420.98,19964.52,0.2352],[196420.99,375000,36851.7,0.3],[375000.01,499999.98,90425.4,0.32],[499999.99,1500000,130425.42,0.34],[1500000.01,999999999,470425.38,0.35]],"JULIO":[[0,0,0,0],[0.01,3472.49,0,0.0192],[3472.5,29472.87,66.64,0.064],[29472.88,51795.94,1730.68,0.1088],[51795.95,60210.5,4159.47,0.16],[60210.51,72088.45,5505.78,0.1792],[72088.46,145392.03,7634.27,0.2136],[145392.04,229157.81,23291.94,0.2352],[229157.82,437500,42993.65,0.3],[437500.01,583333.31,105496.3,0.32],[583333.32,1750000,152162.99,0.34],[1750000.01,999999999,548829.61,0.35]],"AGOSTO":[[0,0,0,0],[0.01,3968.56,0,0.0192],[3968.57,33683.28,76.16,0.064],[33683.29,59195.36,1977.92,0.1088],[59195.37,68812,4753.68,0.16],[68812.01,82386.8,6292.32,0.1792],[82386.81,166162.32,8724.88,0.2136],[166162.33,261894.64,26619.36,0.2352],[261894.65,500000,49135.6,0.3],[500000.01,666666.64,120567.2,0.32],[666666.65,2000000,173900.56,0.34],[2000000.01,999999999,627233.84,0.35]],"SEPTIEMBRE":[[0,0,0,0],[0.01,4464.63,0,0.0192],[4464.64,37893.69,85.68,0.064],[37893.7,66594.78,2225.16,0.1088],[66594.79,77413.5,5347.89,0.16],[77413.51,92685.15,7078.86,0.1792],[92685.16,186932.61,9815.49,0.2136],[186932.62,294631.47,29946.78,0.2352],[294631.48,562500,55277.55,0.3],[562500.01,749999.97,135638.1,0.32],[749999.98,2250000,195638.13,0.34],[2250000.01,999999999,705638.07,0.35]],"OCTUBRE":[[0,0,0,0],[0.01,4960.7,0,0.0192],[4960.71,42104.1,95.2,0.064],[42104.11,73994.2,2472.4,0.1088],[73994.21,86015,5942.1,0.16],[86015.01,102983.5,7865.4,0.1792],[102983.51,207702.9,10906.1,0.2136],[207702.91,327368.3,33274.2,0.2352],[327368.31,625000,61419.5,0.3],[625000.01,833333.3,150709,0.32],[833333.31,2500000,217375.7,0.34],[2500000.01,999999999,784042.3,0.35]],"NOVIEMBRE":[[0,0,0,0],[0.01,5456.77,0,0.0192],[5456.78,46314.51,104.72,0.064],[46314.52,81393.62,2719.64,0.1088],[81393.63,94616.5,6536.31,0.16],[94616.51,113281.85,8651.94,0.1792],[113281.86,228473.19,11996.71,0.2136],[228473.2,360105.13,36601.62,0.2352],[360105.14,687500,67561.45,0.3],[687500.01,916666.63,165779.9,0.32],[916666.64,2750000,239113.27,0.34],[2750000.01,999999999,862446.53,0.35]],"DICIEMBRE":[[0,0,0,0],[0.01,5952.84,0,0.0192],[5952.85,50524.92,114.29,0.064],[50524.93,88793.04,2966.91,0.1088],[88793.05,103218,7130.48,0.16],[103218.01,123580.2,9438.47,0.1792],[123580.21,249243.48,13087.37,0.2136],[249243.49,392841.96,39929.05,0.2352],[392841.97,750000,73703.41,0.3],[750000.01,1000000,180850.82,0.32],[1000000.01,3000000,260850.81,0.34],[3000000.01,999999999,940850.81,0.35]]};
+const IVA_TASA=0.16;
+let DB={ingresos:[],egresos:[],perdidas:0,sdoAnt:0,miRFC:'',importados:[],ejercicio:new Date().getFullYear()};
+let EDIT=null;
+
+// ===== Tema Claro / Oscuro =====
+function initTheme(){
+  const saved=localStorage.getItem('contab_theme')||'light';
+  document.documentElement.setAttribute('data-theme',saved);
+  updateThemeBtn(saved);
+}
+function toggleTheme(){
+  const cur=document.documentElement.getAttribute('data-theme')==='dark'?'light':'dark';
+  document.documentElement.setAttribute('data-theme',cur);
+  localStorage.setItem('contab_theme',cur);
+  updateThemeBtn(cur);
+}
+function updateThemeBtn(theme){
+  const btn=document.getElementById('btn-theme');
+  if(btn)btn.innerHTML=theme==='dark'?'☀️ Modo claro':'🌙 Modo oscuro';
+}
+
+// ===== Modal de confirmación no bloqueante =====
+function showConfirmModal(title,msg,onConfirm){
+  const modal=document.getElementById('custom-modal');
+  document.getElementById('modal-title').textContent=title;
+  document.getElementById('modal-msg').textContent=msg;
+  modal.style.display='flex';
+  const okBtn=document.getElementById('modal-ok');
+  const cancelBtn=document.getElementById('modal-cancel');
+  const close=()=>{modal.style.display='none';okBtn.onclick=null;cancelBtn.onclick=null;};
+  cancelBtn.onclick=close;
+  okBtn.onclick=()=>{close();onConfirm();};
+}
+
+// ===== Deshacer (Ctrl+Z): historial de los últimos estados de la base de datos =====
+let HISTORIA=[];
+function pushHistoria(){HISTORIA.push(JSON.stringify(DB));if(HISTORIA.length>40)HISTORIA.shift();}
+function deshacer(){
+  if(!HISTORIA.length)return toast('Nada que deshacer');
+  DB=JSON.parse(HISTORIA.pop());
+  persist();render();
+  document.getElementById('miRFC').value=DB.miRFC||'';
+  toast('Cambio deshecho ↩');
+}
+function setEjercicio(v){const y=+v;if(y>=2000&&y<=2100){if(y!==(DB.ejercicio||new Date().getFullYear()))pushHistoria();DB.ejercicio=y;persist();render();}}
+
+function syncEgresoIVA(){
+  const sub=+document.getElementById('e-sub').value||0;
+  const aplica=+document.getElementById('e-aiva').value===1;
+  const ivaIn=document.getElementById('e-iva');
+  if(aplica){
+    ivaIn.value=sub>0?(Math.round(sub*IVA_TASA*100)/100).toFixed(2):'';
+  }
+}
+
+function cancelEdit(t){
+  if(t==='ing'){
+    ['i-fec','i-fac','i-cli','i-sub'].forEach(i=>{const el=document.getElementById(i);if(el)el.value='';});
+    EDIT=null;
+    document.getElementById('btn-ing').textContent='＋ Agregar ingreso';
+    document.getElementById('cancel-ing').style.display='none';
+  }else{
+    ['e-fec','e-con','e-sub','e-iva'].forEach(i=>{const el=document.getElementById(i);if(el)el.value='';});
+    EDIT=null;
+    document.getElementById('btn-egr').textContent='＋ Agregar egreso';
+    document.getElementById('cancel-egr').style.display='none';
+  }
+}
+
+function vaciarTodo(){
+  showConfirmModal(
+    '🗑 ¿Vaciar todos los datos del ejercicio '+DB.ejercicio+'?',
+    'Se borrarán los ingresos, egresos e importaciones actuales. Recuerda descargar antes tu respaldo JSON. (Puedes revertir esta acción con el botón ↩ Deshacer).',
+    ()=>{
+      pushHistoria();
+      DB={ingresos:[],egresos:[],perdidas:0,sdoAnt:0,miRFC:DB.miRFC||'',importados:[],ejercicio:DB.ejercicio||new Date().getFullYear()};
+      persist();render();toast('Datos vaciados · Ejercicio '+DB.ejercicio+' listo');
+    }
+  );
+}
+
+function editIng(id){
+  const x=DB.ingresos.find(r=>r.id===id);if(!x)return;
+  document.getElementById('i-mes').value=x.mes;
+  const fecEl=document.getElementById('i-fec');if(fecEl)fecEl.value=x.fec||'';
+  document.getElementById('i-fac').value=x.fac||'';
+  document.getElementById('i-cli').value=x.cli||'';
+  document.getElementById('i-sub').value=x.sub;
+  document.getElementById('i-risr').value=x.risr>0?'1':'0';
+  document.getElementById('i-riva').value=x.riva>0?'1':'0';
+  EDIT={tipo:'ingreso',id};
+  document.getElementById('btn-ing').textContent='💾 Guardar cambios';
+  document.getElementById('cancel-ing').style.display='inline-flex';
+  document.getElementById('sec-ingresos').scrollIntoView({behavior:'smooth'});
+}
+
+function editEgr(id){
+  const x=DB.egresos.find(r=>r.id===id);if(!x)return;
+  document.getElementById('e-mes').value=x.mes;
+  document.getElementById('e-fec').value=x.fec||'';
+  document.getElementById('e-con').value=x.con||'';
+  document.getElementById('e-sub').value=x.sub;
+  document.getElementById('e-aiva').value=(Math.abs(x.iva-x.sub*IVA_TASA)<0.01)?'1':'0';
+  document.getElementById('e-iva').value=x.iva||0;
+  EDIT={tipo:'egreso',id};
+  document.getElementById('btn-egr').textContent='💾 Guardar cambios';
+  document.getElementById('cancel-egr').style.display='inline-flex';
+  document.getElementById('sec-egresos').scrollIntoView({behavior:'smooth'});
+}
+
+function load(){try{const d=JSON.parse(localStorage.getItem('contab2027'));if(d)DB=Object.assign(DB,d);}catch(e){}}
+function persist(){try{localStorage.setItem('contab2027',JSON.stringify(DB));}catch(e){}}
+function save(){
+  const np=+document.getElementById('perdidas').value||0,ns=+document.getElementById('sdoAnt').value||0;
+  if(np!==(DB.perdidas||0)||ns!==(DB.sdoAnt||0))pushHistoria();
+  DB.perdidas=np;DB.sdoAnt=ns;persist();render();
+}
+function toast(m){const t=document.getElementById('toast');t.textContent=m;t.classList.add('show');setTimeout(()=>t.classList.remove('show'),2800);}
+const R2=n=>Math.round((+n||0)*100)/100;
+const f=n=>{const v=R2(n);return (v<0?'-$':'$')+Math.abs(v).toLocaleString('es-MX',{minimumFractionDigits:2,maximumFractionDigits:2});};
+function esc(s){return String(s==null?'':s).replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));}
+const csvVal=v=>{let s=String(v==null?'':v);if(/^[=+@]/.test(s)||(s.startsWith('-')&&!/^-?\d+(\.\d+)?$/.test(s)))s="'"+s;if(/[;"\r\n]/.test(s))s='"'+s.replace(/"/g,'""')+'"';return s;};
+
+function addIngreso(){
+  const mes=document.getElementById('i-mes').value, sub=R2(document.getElementById('i-sub').value);
+  if(!(sub>0))return toast('Capture el subtotal mayor a 0');
+  pushHistoria();
+  const iva=R2(sub*IVA_TASA);
+  const fecEl=document.getElementById('i-fec');
+  const reg={
+    mes,
+    fec:fecEl?fecEl.value:'',
+    fac:document.getElementById('i-fac').value.trim(),
+    cli:document.getElementById('i-cli').value.trim(),
+    sub,iva,total:R2(sub+iva),
+    risr:(+document.getElementById('i-risr').value)?R2(sub*0.10):0,
+    riva:(+document.getElementById('i-riva').value)?R2(iva*2/3):0
+  };
+  const fSel=document.getElementById('fmes-ing');
+  if(fSel&&fSel.value!=='TODOS'&&fSel.value!==mes)fSel.value=mes;
+  if(EDIT&&EDIT.tipo==='ingreso'){
+    const x=DB.ingresos.find(r=>r.id===EDIT.id);
+    if(x)Object.assign(x,reg);
+    cancelEdit('ing');save();toast('Ingreso actualizado correctamente');return;
+  }
+  DB.ingresos.push(Object.assign({id:Date.now()},reg));
+  ['i-fec','i-fac','i-cli','i-sub'].forEach(i=>{const el=document.getElementById(i);if(el)el.value='';});
+  save();toast('Ingreso agregado en '+mes);
+}
+
+function addEgreso(){
+  const mes=document.getElementById('e-mes').value, sub=R2(document.getElementById('e-sub').value);
+  if(!(sub>0))return toast('Capture el importe mayor a 0');
+  pushHistoria();
+  const iva=(+document.getElementById('e-aiva').value)?R2(sub*IVA_TASA):R2(document.getElementById('e-iva').value||0);
+  const reg={
+    mes,
+    fec:document.getElementById('e-fec').value,
+    con:document.getElementById('e-con').value.trim(),
+    sub,iva,total:R2(sub+iva)
+  };
+  const fSel=document.getElementById('fmes-egr');
+  if(fSel&&fSel.value!=='TODOS'&&fSel.value!==mes)fSel.value=mes;
+  if(EDIT&&EDIT.tipo==='egreso'){
+    const x=DB.egresos.find(r=>r.id===EDIT.id);
+    if(x)Object.assign(x,reg);
+    cancelEdit('egr');save();toast('Egreso actualizado correctamente');return;
+  }
+  DB.egresos.push(Object.assign({id:Date.now()},reg));
+  ['e-fec','e-con','e-sub','e-iva'].forEach(i=>{const el=document.getElementById(i);if(el)el.value='';});
+  save();toast('Egreso agregado en '+mes);
+}
+
+function delIng(id){
+  pushHistoria();
+  if(EDIT&&EDIT.tipo==='ingreso'&&EDIT.id===id)cancelEdit('ing');
+  const x=DB.ingresos.find(r=>r.id===id);
+  if(x&&x.uuid){DB.importados=(DB.importados||[]).filter(u=>u!==x.uuid);}
+  DB.ingresos=DB.ingresos.filter(r=>r.id!==id);
+  save();toast('Ingreso eliminado');
+}
+function marcaAnulada(id,chk){
+  const x=DB.ingresos.find(r=>r.id===id);
+  if(!x)return;
+  pushHistoria();
+  x.anulada=!!chk;
+  persist();render();
+  toast(chk?'Factura marcada como NO efectuada (no se suma)':'Factura restablecida');
+}
+function marcaPagadaIng(id,chk){
+  const x=DB.ingresos.find(r=>r.id===id);
+  if(!x)return;
+  pushHistoria();
+  x.pagada=!!chk;
+  persist();render();
+  toast(chk?'Factura marcada como COBRADA / PAGADA 💰':'Factura marcada como pendiente de cobro');
+}
+function marcaPagada(id,chk){
+  const x=DB.egresos.find(r=>r.id===id);
+  if(!x)return;
+  pushHistoria();
+  x.pagada=!!chk;
+  persist();render();
+  toast(chk?'Egreso marcado como PAGADO 💰':'Egreso marcado como pendiente de pago');
+}
+function delEgr(id){
+  pushHistoria();
+  if(EDIT&&EDIT.tipo==='egreso'&&EDIT.id===id)cancelEdit('egr');
+  const x=DB.egresos.find(r=>r.id===id);
+  if(x&&x.uuid){DB.importados=(DB.importados||[]).filter(u=>u!==x.uuid);}
+  DB.egresos=DB.egresos.filter(r=>r.id!==id);
+  save();toast('Egreso eliminado');
+}
+
+function aggMes(tipo,mes){
+  const arr=DB[tipo].filter(x=>x.mes===mes&&!x.anulada);
+  const r={sub:0,iva:0,total:0,risr:0,riva:0,n:arr.length};
+  arr.forEach(x=>{r.sub+=x.sub;r.iva+=x.iva;r.total+=x.total;r.risr+=x.risr||0;r.riva+=x.riva||0;});
+  return r;
+}
+
+function calcISR(){
+  let ingAc=0,dedAc=0,retAc=0,pagAnt=0;
+  const perdTotal=Math.max(0,+DB.perdidas||0);
+  const rows=[];
+  MESES.forEach((m,i)=>{
+    const ing=aggMes('ingresos',m),egr=aggMes('egresos',m);
+    ingAc+=ing.sub;dedAc+=egr.sub;retAc+=ing.risr;
+    const utilAc=Math.max(ingAc-dedAc,0);
+    const perdUsada=Math.min(perdTotal,utilAc);
+    const resultado=Math.max(utilAc-perdUsada,0);
+    const t=TABLAS_ISR[m];let li=0,cuota=0,tasa=0;
+    for(const b of t){if(resultado>=b[0]){li=b[0];cuota=b[2];tasa=b[3];}}
+    const exc=resultado-li, marginal=exc*tasa, causado=marginal+cuota;
+    const aPagar=R2(Math.max(causado-retAc-pagAnt,0));
+    rows.push({mes:m,ing:ing.sub,ded:egr.sub,ret:ing.risr,ingAc,dedAc,perdUsada,resultado,li,exc,tasa,marginal,cuota,causado,retAc,pagAnt,aPagar});
+    pagAnt+=aPagar;
+  });
+  return rows;
+}
+
+function calcIVA(){
+  let saldoFavorAnterior=DB.sdoAnt||0;const rows=[];
+  MESES.forEach(m=>{
+    const ing=aggMes('ingresos',m),egr=aggMes('egresos',m);
+    const cobrado=ing.iva, acreditable=egr.iva, retenido=ing.riva;
+    const dif=cobrado-acreditable-retenido;
+    const porPagar=Math.max(dif,0), aFavor=Math.max(-dif,0);
+    const sdoFavorAcum=saldoFavorAnterior+aFavor;
+    const acreditado=Math.min(porPagar,sdoFavorAcum);
+    const ivaPagar=porPagar-acreditado;
+    const sdoPorAcreditar=sdoFavorAcum-acreditado;
+    rows.push({mes:m,cobrado,acreditable,retenido,porPagar,aFavor,sdoFavorAcum,acreditado,ivaPagar,sdoPorAcreditar});
+    saldoFavorAnterior=sdoPorAcreditar;
+  });
+  return rows;
+}
+
+// ===== Meta mensual $0.00: SOLO el mes (sin arrastres ni meses anteriores) =====
+function causadoTarifaMensual(r){
+  if(r<=0)return 0;
+  const t=TABLAS_ISR['ENERO'];let li=t[1][0],cuota=t[1][2],tasa=t[1][3];
+  for(const b of t){if(b[0]>0&&r>=b[0]){li=b[0];cuota=b[2];tasa=b[3];}}
+  return Math.max(0,(r-li)*tasa+cuota);
+}
+function deduccionParaCero(){
+  const base=calcISR();
+  return MESES.map((m,i)=>{
+    const ing=aggMes('ingresos',m);
+    const resultado=R2(Math.max(0,ing.sub-aggMes('egresos',m).sub));
+    const ret=ing.risr||0;
+    if(resultado<=0||causadoTarifaMensual(resultado)<=ret+1e-9)return {mes:m,isr:base[i].aPagar,d:0};
+    if(ret===0)return {mes:m,isr:base[i].aPagar,d:resultado};
+    let lo=0,hi=resultado;
+    for(let k=0;k<45;k++){
+      const mid=(lo+hi)/2;
+      if(causadoTarifaMensual(resultado-mid)<=ret+1e-9)hi=mid;else lo=mid;
+    }
+    return {mes:m,isr:base[i].aPagar,d:Math.ceil(hi*100)/100};
+  });
+}
+
+// ===== Dona mensual mejorada: pendiente por deducir del mes seleccionado =====
+function renderDonut(){
+  const sel=document.getElementById('mes-donut');
+  const mes=MESES.includes(sel.value)?sel.value:MESES[new Date().getMonth()];
+  const ing=aggMes('ingresos',mes),egr=aggMes('egresos',mes);
+  const ingM=R2(ing.sub),egrM=R2(egr.sub),retM=ing.risr||0;
+  const pend=R2(ingM-egrM);
+  const isrMes=pend>0?Math.max(0,Math.round((causadoTarifaMensual(pend)-retM)*100)/100):0;
+  const box=document.getElementById('donut');
+  if(!(ingM>0)&&!(egrM>0)){
+    box.innerHTML=`<div class="mut" style="text-align:center;padding:60px 16px;background:var(--bg);border-radius:12px;border:1px dashed var(--bor-strong)">Sin movimientos registrados en <b>${mes}</b>.<br>Selecciona otro mes o registra facturas para visualizar el análisis. 🍩</div>`;
+    return;
+  }
+  const base=Math.max(ingM,egrM,0.01);
+  const pc=v=>Math.max(0,Math.min(100,v/base*100));
+  const p1=pc(egrM),p2=pc(isrMes),corte=Math.min(p1+p2,99.99);
+  const centro=pend>0?f(pend):'✔ $0.00';
+  const ccolor=pend>0?'var(--red)':'var(--p2)';
+  box.innerHTML=`
+    <div class="donut-layout">
+      <div class="donut" style="background:conic-gradient(var(--amb) 0% ${p1}%, var(--red) ${p1}% ${corte}%, var(--p2) ${corte}% 100%)">
+        <div>
+          <div style="font-size:10.5px;text-transform:uppercase;letter-spacing:0.05em;color:var(--mut);font-weight:700;margin-bottom:2px">${pend>0?'Por deducir':'Meta cubierta'}</div>
+          <div style="font-family:'JetBrains Mono',monospace;font-size:21px;font-weight:800;color:${ccolor};letter-spacing:-0.03em;line-height:1.15">${centro}</div>
+          <div style="font-size:11.5px;color:var(--mut);font-weight:700;margin-top:4px">${mes}</div>
+        </div>
+      </div>
+      <ul class="leyenda">
+        <li><span class="punto" style="background:var(--p3)"></span><span>Ingresos del mes (sin IVA)</span><span class="cant pos">${f(ingM)}</span></li>
+        <li><span class="punto" style="background:var(--amb)"></span><span>Egresos del mes (sin IVA)</span><span class="cant">${f(egrM)} (${p1.toFixed(1)}%)</span></li>
+        <li><span class="punto" style="background:var(--red)"></span><span>ISR estimado del mes</span><span class="cant">${f(isrMes)} (${p2.toFixed(1)}%)</span></li>
+        <li><span class="punto" style="background:var(--p2)"></span><span>Utilidad neta tras ISR</span><span class="cant">${f(Math.max(pend-isrMes,0))}</span></li>
+        <li style="background:var(--blu-soft);border-color:var(--blu-bor);grid-column:1 / -1">
+          <span class="punto" style="background:var(--blu)"></span>
+          <b style="color:var(--tx)">💡 Pendiente por deducir: Ingresos (${f(ingM)}) − Egresos (${f(egrM)})</b>
+          <span class="cant" style="color:var(--blu);font-size:14.5px">${f(pend)}</span>
+        </li>
+      </ul>
+    </div>
+    <p class="mut" style="text-align:center;margin-top:8px">Cálculo exclusivo de <b>${mes}</b> con importes <b>sin IVA</b> (con IVA: Ingresos ${f(ing.total)} − Egresos ${f(egr.total)} = ${f(ing.total-egr.total)}). Facturar deducciones por <b>${f(pend)}</b> más IVA dentro del mes reduce la base gravable del periodo.</p>`;
+}
+
+function render(){
+  const ej=document.getElementById('ejercicio');if(ej&&ej.value!=DB.ejercicio)ej.value=DB.ejercicio||new Date().getFullYear();
+  document.getElementById('subtitle').textContent='Cálculo de ISR e IVA · Ejercicio '+(DB.ejercicio||new Date().getFullYear())+' · Guardado local seguro';
+  document.getElementById('perdidas').value=DB.perdidas||0;
+  document.getElementById('sdoAnt').value=DB.sdoAnt||0;
+  const isr=calcISR(),iva=calcIVA();
+  const meta=deduccionParaCero();
+  const mHoyIdx=new Date().getMonth();
+  const fIngV=document.getElementById('fmes-ing')?document.getElementById('fmes-ing').value:'TODOS';
+  const fEgrV=document.getElementById('fmes-egr')?document.getElementById('fmes-egr').value:'TODOS';
+  const qIng=(document.getElementById('q-ing')?document.getElementById('q-ing').value:'').trim().toLowerCase();
+  const qEgr=(document.getElementById('q-egr')?document.getElementById('q-egr').value:'').trim().toLowerCase();
+  const fIng=MESES.includes(fIngV)?fIngV:'TODOS';
+  const fEgr=MESES.includes(fEgrV)?fEgrV:'TODOS';
+
+  const sinNum=s=>{const t=String(s||'');if(/^[0-9A-Fa-f]{8}-[0-9A-Fa-f]{4}/.test(t))return Infinity;const m=t.match(/(\d+)\s*$/);return m?+m[1]:Infinity;};
+  const ingShow=(fIng==='TODOS'?DB.ingresos:DB.ingresos.filter(x=>x.mes===fIng))
+    .filter(x=>!qIng || String(x.cli||'').toLowerCase().includes(qIng) || String(x.fac||'').toLowerCase().includes(qIng) || String(x.fec||'').toLowerCase().includes(qIng))
+    .slice().sort((a,b)=>(sinNum(a.fac)-sinNum(b.fac))||String(a.fec||'9999-12-31').localeCompare(String(b.fec||'9999-12-31'))||String(a.cli||'').localeCompare(String(b.cli||'')));
+
+  const egrShow=(fEgr==='TODOS'?DB.egresos:DB.egresos.filter(x=>x.mes===fEgr))
+    .filter(x=>!qEgr || String(x.con||'').toLowerCase().includes(qEgr) || String(x.fec||'').toLowerCase().includes(qEgr))
+    .slice().sort((a,b)=>String(a.fec||'9999-12-31').localeCompare(String(b.fec||'9999-12-31'))||String(a.con||'').localeCompare(String(b.con||'')));
+
+  const totIng=DB.ingresos.filter(x=>!x.anulada).reduce((s,x)=>s+x.total,0), totEgr=DB.egresos.filter(x=>!x.anulada).reduce((s,x)=>s+x.total,0);
+  const isrAnual=isr.reduce((s,r)=>s+r.aPagar,0), ivaAnual=iva.reduce((s,r)=>s+r.ivaPagar,0);
+
+  document.getElementById('kpis').innerHTML=`
+    <div class="kpi" title="Ingresos (total con IVA)"><div class="t">Ingresos (c/IVA)</div><div class="v pos">${f(totIng)}</div></div>
+    <div class="kpi" style="border-left-color:var(--red)" title="Egresos (total con IVA)"><div class="t">Egresos (c/IVA)</div><div class="v neg">${f(totEgr)}</div></div>
+    <div class="kpi" title="Flujo / Utilidad Bruta"><div class="t">Utilidad Bruta</div><div class="v">${f(totIng-totEgr)}</div></div>
+    <div class="kpi" style="border-left-color:var(--amb)" title="ISR a pagar (anual)"><div class="t">ISR Anual</div><div class="v">${f(isrAnual)}</div></div>
+    <div class="kpi" style="border-left-color:var(--amb)" title="IVA a pagar (anual)"><div class="t">IVA Anual</div><div class="v">${f(ivaAnual)}</div></div>
+    <div class="kpi" title="IVA a favor (diciembre)"><div class="t">IVA Favor (Dic)</div><div class="v pos">${f(iva[11].sdoPorAcreditar)}</div></div>
+    <div class="kpi" style="border-left-color:var(--blu)" title="Deducir sin IVA para ISR $0.00 en ${MESES[mHoyIdx]}"><div class="t">💡 Deducir (${MESES[mHoyIdx].slice(0,3)})</div><div class="v" style="color:${meta[mHoyIdx].d>0?'var(--blu)':'var(--p2)'}">${f(meta[mHoyIdx].d)}</div></div>`;
+
+  // Gráfico de Barras Comparativo Mensual
+  const modoChart=(document.getElementById('modo-chart')?document.getElementById('modo-chart').value:'sub');
+  const campoChart=modoChart==='total'?'total':'sub';
+  const etqModo=modoChart==='total'?'con IVA':'sin IVA';
+  const titleEl=document.getElementById('chart-title');
+  if(titleEl)titleEl.textContent=`📊 Flujo mensual (Ingresos vs Egresos ${etqModo})`;
+  const max=Math.max(1,...MESES.map(m=>Math.max(aggMes('ingresos',m)[campoChart],aggMes('egresos',m)[campoChart])));
+  document.getElementById('chart').innerHTML=`
+    <div class="chart-header">
+      <div style="text-align:right">Mes</div>
+      <div>Comparativa visual (${etqModo})</div>
+      <div style="text-align:right">🟢 Ingresos</div>
+      <div style="text-align:right">🔴 Egresos</div>
+      <div style="text-align:right">Diferencia</div>
+    </div>`+MESES.map(m=>{
+    const i=aggMes('ingresos',m)[campoChart],e=aggMes('egresos',m)[campoChart];
+    const dif=i-e;
+    return `<div class="chart-row" title="${m} (${etqModo}): Ingresos ${f(i)} − Egresos ${f(e)} = ${f(dif)}">
+      <div class="chart-month">${m.slice(0,3)}</div>
+      <div class="bar-dual">
+        <div class="bar-track"><div class="bar-fill-ing" style="width:${(i/max)*100}%"></div></div>
+        <div class="bar-track"><div class="bar-fill-egr" style="width:${(e/max)*100}%"></div></div>
+      </div>
+      <div class="num pos col-hide-sm">${f(i)}</div>
+      <div class="num neg col-hide-sm">${f(e)}</div>
+      <div class="num ${dif>=0?'pos':'neg'}" style="font-weight:700">${f(dif)}</div>
+    </div>`;
+  }).join('')+`<div class="mut" style="margin-top:12px;display:flex;gap:16px;justify-content:center;font-weight:600;flex-wrap:wrap">
+    <span>🟢 Barra superior: Ingresos (${etqModo})</span>
+    <span>🔴 Barra inferior: Egresos (${etqModo})</span>
+    <span>Columna derecha: Ingresos − Egresos (${etqModo})</span>
+  </div>`;
+
+  // Tabla Resumen Impuestos
+  document.getElementById('tbl-res').innerHTML=`<thead><tr><th>Mes</th><th class="num">IVA cobrado</th><th class="num">IVA acreditable</th><th class="num">IVA retenido</th><th class="num">IVA a pagar</th><th class="num">ISR a pagar</th><th class="num">💡 Deducir sin IVA p/ $0 ISR</th></tr></thead><tbody>`+
+    MESES.map((m,i)=>`<tr>
+      <td style="font-weight:700;color:var(--tx)">${m}</td>
+      <td class="num">${f(iva[i].cobrado)}</td>
+      <td class="num">${f(iva[i].acreditable)}</td>
+      <td class="num">${f(iva[i].retenido)}</td>
+      <td class="num ${iva[i].ivaPagar>0?'neg':'pos'}">${f(iva[i].ivaPagar)}</td>
+      <td class="num ${isr[i].aPagar>0?'neg':'pos'}">${f(isr[i].aPagar)}</td>
+      <td class="num">${meta[i].d>0?`<span class="badge badge-info">${f(meta[i].d)}</span>`:'<span class="mut">—</span>'}</td>
+    </tr>`).join('')+
+    `</tbody><tfoot><tr><td>TOTAL ANUAL</td><td class="num">${f(iva.reduce((s,r)=>s+r.cobrado,0))}</td><td class="num">${f(iva.reduce((s,r)=>s+r.acreditable,0))}</td><td class="num">${f(iva.reduce((s,r)=>s+r.retenido,0))}</td><td class="num">${f(ivaAnual)}</td><td class="num">${f(isrAnual)}</td><td class="num">${f(meta.reduce((s,r)=>s+r.d,0))}</td></tr></tfoot>`;
+
+  // Tabla Ingresos
+  const nPagIng=ingShow.filter(x=>x.pagada).length;
+  document.getElementById('tbl-ing').innerHTML=`<thead><tr>
+    <th>Mes</th>
+    <th>Fecha</th>
+    <th>Factura</th>
+    <th>Cliente</th>
+    <th class="num">Subtotal</th>
+    <th class="num">IVA (16%)</th>
+    <th class="num">Total c/IVA</th>
+    <th class="num">Ret. ISR</th>
+    <th class="num">Ret. IVA</th>
+    <th class="num">Gran total</th>
+    <th style="text-align:center">Cobrada</th>
+    <th style="text-align:right">Acciones</th>
+  </tr></thead><tbody>`+
+  (ingShow.length ? ingShow.map(x=>`
+    <tr class="${x.anulada?'anulada-row':(x.pagada?'pagada':'')}">
+      <td><span class="badge badge-ok">${x.mes.slice(0,3)}</span></td>
+      <td class="num" style="text-align:left">${esc(x.fec)||'—'}</td>
+      <td style="font-weight:600;color:var(--tx)">${esc(x.fac)||'—'}</td>
+      <td style="max-width:260px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap" title="${esc(x.cli)}">${esc(x.cli)||'—'}</td>
+      <td class="num">${f(x.sub)}</td>
+      <td class="num">${f(x.iva)}</td>
+      <td class="num">${f(x.total)}</td>
+      <td class="num">${f(x.risr)}</td>
+      <td class="num">${f(x.riva)}</td>
+      <td class="num" style="font-weight:700;color:var(--tx)">${f(x.total-x.risr-x.riva)}</td>
+      <td style="text-align:center"><input type="checkbox" title="Marcar como cobrada/pagada" ${x.pagada?'checked':''} onchange="marcaPagadaIng(${x.id},this.checked)"></td>
+      <td style="text-align:right;white-space:nowrap">
+        <button class="btn sm ghost" aria-label="Editar ingreso" title="Editar" onclick="editIng(${x.id})">✎</button>
+        <button class="btn sm del" aria-label="Eliminar ingreso" title="Eliminar" onclick="delIng(${x.id})">✕</button>
+        <input type="checkbox" style="margin-left:6px" title="Marcar operación como NO efectuada / Anulada (no suma en impuestos)" ${x.anulada?'checked':''} onchange="marcaAnulada(${x.id},this.checked)">
+      </td>
+    </tr>
+  `).join('') : `<tr><td colspan="12" class="mut" style="text-align:center;padding:28px">${fIng==='TODOS'?'Sin facturas de ingresos registradas':'Sin facturas registradas en '+fIng}</td></tr>`)+
+  `</tbody><tfoot><tr>
+    <td colspan="4">TOTAL ${fIng==='TODOS'?'AÑO':'DE '+fIng} (${ingShow.length} reg.)${nPagIng?' · <span class="pos">'+nPagIng+' cobrada(s)</span>':''}${ingShow.length-nPagIng?' · '+(ingShow.length-nPagIng)+' por cobrar':''}${ingShow.some(x=>x.anulada)?' · <span class="neg">'+ingShow.filter(x=>x.anulada).length+' anulada(s)</span>':''}</td>
+    ${['sub','iva','total','risr','riva'].map(k=>`<td class="num">${f(ingShow.filter(x=>!x.anulada).reduce((s,x)=>s+x[k],0))}</td>`).join('')}
+    <td class="num">${f(ingShow.filter(x=>!x.anulada).reduce((s,x)=>s+x.total-x.risr-x.riva,0))}</td>
+    <td class="num pos" title="Pendiente por cobrar">${f(ingShow.filter(x=>!x.anulada&&!x.pagada).reduce((s,x)=>s+x.total-x.risr-x.riva,0))}</td>
+    <td></td>
+  </tr></tfoot>`;
+
+  // Tabla Egresos
+  const nPag=egrShow.filter(x=>x.pagada).length, nPen=egrShow.length-nPag;
+  document.getElementById('tbl-egr').innerHTML=`<thead><tr><th>Mes</th><th>Fecha</th><th>Proveedor / Concepto</th><th class="num">Importe s/IVA</th><th class="num">IVA Acreditable</th><th class="num">Total</th><th style="text-align:center">Pagada</th><th style="text-align:right">Acciones</th></tr></thead><tbody>`+
+    (egrShow.length?egrShow.map(x=>`<tr class="${x.pagada?'pagada':''}">
+      <td><span class="badge badge-warn">${x.mes.slice(0,3)}</span></td>
+      <td class="num" style="text-align:left">${esc(x.fec)||'—'}</td>
+      <td style="font-weight:600;color:var(--tx)">${esc(x.con)||'—'}</td>
+      <td class="num">${f(x.sub)}</td>
+      <td class="num">${f(x.iva)}</td>
+      <td class="num" style="font-weight:700;color:var(--tx)">${f(x.total)}</td>
+      <td style="text-align:center"><input type="checkbox" title="Factura ya pagada" ${x.pagada?'checked':''} onchange="marcaPagada(${x.id},this.checked)"></td>
+      <td style="text-align:right;white-space:nowrap">
+        <button class="btn sm ghost" aria-label="Editar egreso" title="Editar" onclick="editEgr(${x.id})">✎</button>
+        <button class="btn sm del" aria-label="Eliminar egreso" title="Eliminar" onclick="delEgr(${x.id})">✕</button>
+      </td>
+    </tr>`).join(''):`<tr><td colspan="8" class="mut" style="text-align:center;padding:28px">${fEgr==='TODOS'?'Sin egresos registrados':'Sin egresos registrados en '+fEgr}</td></tr>`)+
+    `</tbody><tfoot><tr><td colspan="3">TOTAL ${fEgr==='TODOS'?'AÑO':'DE '+fEgr} (${egrShow.length} reg.)${nPag?' · <span class="pos">'+nPag+' pagada(s)</span>':''}${nPen?' · '+nPen+' por pagar':''}</td><td class="num">${f(egrShow.reduce((s,x)=>s+x.sub,0))}</td><td class="num">${f(egrShow.reduce((s,x)=>s+x.iva,0))}</td><td class="num">${f(egrShow.reduce((s,x)=>s+x.total,0))}</td><td class="num pos" title="Pendiente por pagar">${f(egrShow.filter(x=>!x.pagada).reduce((s,x)=>s+x.total,0))}</td><td></td></tr></tfoot>`;
+
+  // Tabla Matriz ISR
+  document.getElementById('tbl-isr').innerHTML=`<thead><tr><th>Concepto</th>${MESES.map(m=>`<th class="num">${m.slice(0,3)}</th>`).join('')}</tr></thead><tbody>`+
+    [['INGRESOS DEL MES',r=>f(r.ing)],['DEDUCCIONES AUTORIZADAS',r=>f(r.ded)],['ISR RETENIDO DEL MES',r=>f(r.ret)],
+     ['INGRESOS ACUMULADOS',r=>f(r.ingAc)],['(-) DEDUCCIONES ACUMULADAS',r=>f(r.dedAc)],
+     ['(-) PÉRDIDAS FISCALES APLIC.',r=>f(r.perdUsada)],
+     ['(=) RESULTADO GRAVABLE',r=>f(r.resultado)],['(-) LÍMITE INFERIOR',r=>f(r.li)],['(=) EXCEDENTE S/LÍMITE',r=>f(r.exc)],
+     ['(*) % S/EXCEDENTE',r=>(r.tasa*100).toFixed(2)+'%'],['(=) IMPUESTO MARGINAL',r=>f(r.marginal)],
+     ['(+) CUOTA FIJA',r=>f(r.cuota)],['(=) IMPUESTO CAUSADO',r=>f(r.causado)],
+     ['(-) ISR RETENIDO ACUM.',r=>f(r.retAc)],['(-) PAGOS PROVISIONALES ANT.',r=>f(r.pagAnt)],
+     ['(=) ISR A PAGAR',r=>f(r.aPagar),true]].map(([lab,fn,hl])=>
+      `<tr class="${hl?'hl-row':''}"><td>${lab}</td>${isr.map(r=>`<td class="num">${fn(r)}</td>`).join('')}</tr>`).join('')+'</tbody>';
+
+  // Tabla Matriz IVA
+  document.getElementById('tbl-iva').innerHTML=`<thead><tr><th>Concepto</th>${MESES.map(m=>`<th class="num">${m.slice(0,3)}</th>`).join('')}</tr></thead><tbody>`+
+    [['IVA COBRADO (16%)',r=>r.cobrado],['(-) IVA ACREDITABLE',r=>r.acreditable],['(-) IVA RETENIDO',r=>r.retenido],
+     ['(=) IVA POR PAGAR DEL MES',r=>r.porPagar],['(=) IVA A FAVOR DEL MES',r=>r.aFavor],
+     ['SDO. FAVOR ACUMULADO',r=>r.sdoFavorAcum],['(-) ACREDITAMIENTO DEL MES',r=>r.acreditado],
+     ['(=) IVA A PAGAR',r=>r.ivaPagar,true],['SDO. POR ACREDITAR (REM.)',r=>r.sdoPorAcreditar]].map(([lab,fn,hl])=>
+      `<tr class="${hl?'hl-row':''}"><td>${lab}</td>${iva.map(r=>`<td class="num">${f(fn(r))}</td>`).join('')}</tr>`).join('')+'</tbody>';
+
+  // Tabla Meta Mensual $0 ISR
+  document.getElementById('tbl-meta').innerHTML=`<thead><tr><th>Mes</th><th class="num">ISR a pagar actual (oficial acumulado)</th><th class="num">💡 Deducción adicional del mes (sin IVA) p/ $0.00</th></tr></thead><tbody>`+
+    meta.map(r=>`<tr style="${r.d>0?'background:var(--amb-soft)':''}">
+      <td style="font-weight:700;color:var(--tx)">${r.mes}</td>
+      <td class="num">${f(r.isr)}</td>
+      <td class="num">${r.d>0?`<span class="badge badge-info" style="font-size:13px">${f(r.d)}</span>`:'<span class="badge badge-ok">✔ En ceros ($0.00)</span>'}</td>
+    </tr>`).join('')+
+    `</tbody><tfoot><tr><td>TOTAL (suma de escenarios por mes)</td><td class="num">${f(isrAnual)}</td><td class="num">${f(meta.reduce((s,r)=>s+r.d,0))}</td></tr></tfoot>`;
+
+  renderDonut();
+  calcRecargos();
+}
+
+function calcRecargos(){
+  const mes=document.getElementById('r-mes').value;
+  const mIdx=MESES.indexOf(mes);
+  const isr=mIdx>=0?calcISR()[mIdx]:null;
+  const fecStr=document.getElementById('r-fec').value;
+  const out=document.getElementById('r-out');
+  if(!isr||!fecStr){out.innerHTML='';return;}
+  const fec=new Date(fecStr+'T12:00:00');
+  const limite=new Date(DB.ejercicio||new Date().getFullYear(),mIdx+1,17,12,0,0);
+  const mesesRec=Math.max(0,Math.ceil((fec-limite)/(30*24*3600*1000)));
+  const factor=Math.trunc(((+document.getElementById('r-inpc1').value||1)/(+document.getElementById('r-inpc2').value||1)-1)*10000)/10000;
+  const tasaEl=document.getElementById('r-tasa');
+  const tasaRec=tasaEl?(+tasaEl.value||0.0113):0.0113;
+  const base=isr.aPagar;
+  const actualizado=base*(1+Math.max(factor,0));
+  const recargos=actualizado*tasaRec*mesesRec;
+  out.innerHTML=`<table><tbody>
+    <tr><td>ISR determinado a pagar de <b>${mes}</b></td><td class="num"><b>${f(base)}</b></td></tr>
+    <tr><td>Meses de mora / recargos (fecha límite: ${limite.toLocaleDateString('es-MX')})</td><td class="num">${mesesRec} mes(es)</td></tr>
+    <tr><td>Factor de actualización (INPC)</td><td class="num">${(Math.max(factor,0)*100).toFixed(4)}%</td></tr>
+    <tr><td>Impuesto actualizado</td><td class="num">${f(actualizado)}</td></tr>
+    <tr><td>Recargos acumulados (${(tasaRec*100).toFixed(2)}% mensual)</td><td class="num">${f(recargos)}</td></tr>
+    <tr style="background:var(--tfoot-bg);font-weight:700;color:var(--tx)"><td>TOTAL A PAGAR CON ACCESORIOS</td><td class="num">${f(actualizado+recargos)}</td></tr>
+  </tbody></table>`;
+}
+
+function download(name,content,type){
+  const url=URL.createObjectURL(new Blob([content],{type}));
+  const a=document.createElement('a');
+  a.href=url;a.download=name;a.click();
+  setTimeout(()=>URL.revokeObjectURL(url),1000);
+}
+function exportJSON(){download('contabilidad_'+(DB.ejercicio||new Date().getFullYear())+'.json',JSON.stringify(DB,null,2),'application/json');toast('Respaldo JSON descargado');}
+function exportCSV(){
+  const ej=DB.ejercicio||new Date().getFullYear();
+  let c=';REGISTRO DE INGRESOS '+ej+'\n;Mes;Fecha;Factura;Cliente;Subtotal;IVA;Total;RetISR;RetIVA;GranTotal;Estado\n';
+  DB.ingresos.forEach(x=>c+=`;${csvVal(x.mes)};${csvVal(x.fec||'')};${csvVal(x.fac)};${csvVal(x.cli)};${R2(x.sub)};${R2(x.iva)};${R2(x.total)};${R2(x.risr)};${R2(x.riva)};${R2(x.total-x.risr-x.riva)};${x.anulada?'ANULADA':(x.pagada?'COBRADA':'PENDIENTE')}\n`);
+  c+='\n;REGISTRO DE EGRESOS '+ej+'\n;Mes;Fecha;Proveedor;Importe;IVA;Total;Estado\n';
+  DB.egresos.forEach(x=>c+=`;${csvVal(x.mes)};${csvVal(x.fec)};${csvVal(x.con)};${R2(x.sub)};${R2(x.iva)};${R2(x.total)};${x.pagada?'PAGADA':'PENDIENTE'}\n`);
+  const isr=calcISR(),iva=calcIVA();
+  c+='\n;ISR MENSUAL\n;Mes;Ingresos;Deducciones;Impuesto causado;ISR a pagar\n';
+  isr.forEach(r=>c+=`;${csvVal(r.mes)};${R2(r.ing)};${R2(r.ded)};${R2(r.causado)};${R2(r.aPagar)}\n`);
+  c+='\n;IVA MENSUAL\n;Mes;Cobrado;Acreditable;Retenido;IVA a pagar;Saldo a favor\n';
+  iva.forEach(r=>c+=`;${csvVal(r.mes)};${R2(r.cobrado)};${R2(r.acreditable)};${R2(r.retenido)};${R2(r.ivaPagar)};${R2(r.sdoPorAcreditar)}\n`);
+  download('contabilidad_'+ej+'.csv','\ufeff'+c,'text/csv');toast('Archivo CSV descargado');
+}
+function importJSON(inp){
+  const file=inp.files[0];if(!file)return;
+  const rd=new FileReader();
+  rd.onload=e=>{try{const d=JSON.parse(e.target.result);if(!Array.isArray(d.ingresos)||!Array.isArray(d.egresos))throw 0;pushHistoria();DB=Object.assign(DB,d);persist();render();toast('Respaldo restaurado con éxito');}catch(err){toast('Archivo JSON no válido');}};
+  rd.readAsText(file);inp.value='';
+}
+
+// ================= IMPORTACIÓN CFDI XML / PDF / EXCEL =================
+let PREVIEW=[];
+function setRFC(v){DB.miRFC=(v||'').toUpperCase().trim();persist();}
+const _scriptsCargados={};
+function loadScript(src,integrity){if(!_scriptsCargados[src])_scriptsCargados[src]=new Promise((ok,no)=>{const s=document.createElement('script');s.src=src;if(integrity){s.integrity=integrity;s.crossOrigin='anonymous';}s.onload=ok;s.onerror=no;document.head.appendChild(s);});return _scriptsCargados[src];}
+function mesDeFecha(f){const m=(f||'').match(/(\d{4})-(\d{2})/);return m&&+m[2]>=1&&+m[2]<=12?MESES[+m[2]-1]:null;}
+const LIMPIO=n=>+String(n||'').replace(/[^0-9.\-]/g,'')||0;
+
+function attr(tag,name){const m=tag.match(new RegExp('\\b'+name+'=["\']([^"\']*)["\']','i'));return m?m[1]:'';}
+
+// Parser CFDI con soporte DOMParser XML nativo + fallback Regex para máxima compatibilidad CFDI 3.3 y 4.0
+function parseCFDI(txt){
+  try{
+    const doc=new DOMParser().parseFromString(txt,'text/xml');
+    if(!doc.querySelector('parsererror')){
+      const getAttr=(el,...names)=>{
+        if(!el)return '';
+        for(const n of names){
+          if(el.hasAttribute(n))return el.getAttribute(n);
+          for(const a of el.attributes){if(a.name.toLowerCase()===n.toLowerCase())return a.value;}
+        }
+        return '';
+      };
+      const findNode=localName=>{
+        const all=doc.getElementsByTagName('*');
+        for(let i=0;i<all.length;i++){
+          if(all[i].localName&&all[i].localName.toLowerCase()===localName.toLowerCase())return all[i];
+        }
+        return null;
+      };
+      const comp=findNode('Comprobante');
+      const em=findNode('Emisor');
+      const rec=findNode('Receptor');
+      if(comp&&em&&rec){
+        const tipo=(getAttr(comp,'TipoDeComprobante')||'I').toUpperCase();
+        if(tipo==='P'||tipo==='T')throw new Error('CFDI tipo "'+tipo+'" (Complemento de Pago / Traslado sin subtotal gravable), se omite');
+        const moneda=(getAttr(comp,'Moneda')||'MXN').toUpperCase();
+        const tcRaw=LIMPIO(getAttr(comp,'TipoCambio'));
+        const tc=(moneda!=='MXN'&&moneda!=='XXX'&&tcRaw>0)?tcRaw:1;
+        const desc=LIMPIO(getAttr(comp,'Descuento'));
+        const sub=R2(Math.max(0,LIMPIO(getAttr(comp,'SubTotal'))-desc)*tc);
+        const total=R2(LIMPIO(getAttr(comp,'Total'))*tc);
+        const tfd=findNode('TimbreFiscalDigital');
+        const fecha=getAttr(comp,'Fecha')||getAttr(tfd,'FechaTimbrado')||'';
+        const serie=getAttr(comp,'Serie'),folio=getAttr(comp,'Folio');
+        const emRFC=getAttr(em,'Rfc'),emNom=getAttr(em,'Nombre')||emRFC;
+        const recRFC=getAttr(rec,'Rfc'),recNom=getAttr(rec,'Nombre')||recRFC;
+        const uuid=getAttr(tfd,'UUID');
+        let iva=0,rISR=0,rIVA=0;
+        const allNodes=doc.getElementsByTagName('*');
+        const topImp=[];
+        for(let i=0;i<allNodes.length;i++){
+          const el=allNodes[i];
+          if(el.localName&&el.localName.toLowerCase()==='impuestos'){
+            const pName=(el.parentNode&&el.parentNode.localName||'').toLowerCase();
+            if(pName==='comprobante')topImp.push(el);
+          }
+        }
+        const searchRoot=topImp.length?topImp[0]:doc;
+        const subNodes=searchRoot.getElementsByTagName('*');
+        for(let i=0;i<subNodes.length;i++){
+          const el=subNodes[i];
+          const ln=(el.localName||'').toLowerCase();
+          if(ln==='traslado'&&getAttr(el,'Impuesto')==='002'&&getAttr(el,'TipoFactor').toUpperCase()==='TASA'){
+            iva+=LIMPIO(getAttr(el,'Importe'));
+          }else if(ln==='retencion'){
+            const imp=getAttr(el,'Impuesto');
+            if(imp==='001')rISR+=LIMPIO(getAttr(el,'Importe'));
+            if(imp==='002')rIVA+=LIMPIO(getAttr(el,'Importe'));
+          }
+        }
+        iva=R2(iva*tc);rISR=R2(rISR*tc);rIVA=R2(rIVA*tc);
+        let tip=null;
+        if(DB.miRFC){tip=emRFC.toUpperCase()===DB.miRFC?'ingreso':(recRFC.toUpperCase()===DB.miRFC?'egreso':null);}
+        if(!tip){tip=tipo==='E'?'egreso':'ingreso';}
+        return {tipo:tip,mes:mesDeFecha(fecha)||MESES[new Date().getMonth()],sinFecha:!fecha,fac:(serie?serie+'-':'')+folio,con:tip==='ingreso'?recNom:emNom,cli:recNom,sub,iva,rISR,rIVA,total,fec:(fecha||'').slice(0,10),uuid,origen:'XML',emRFC,recRFC};
+      }
+    }
+  }catch(e){
+    if(e&&/Complemento de Pago/i.test(e.message))throw e;
+  }
+
+  // Fallback Regex original
+  const comp=txt.match(/<(?:[\w-]+:)?Comprobante\b[^>]*>/);if(!comp)return null;
+  const t=comp[0];
+  const tipo=(attr(t,'TipoDeComprobante')||'I').toUpperCase();
+  if(tipo==='P'||tipo==='T')throw new Error('CFDI tipo "'+tipo+'" (Complemento de Pago / Traslado sin subtotal gravable), se omite');
+  const desc=LIMPIO(attr(t,'Descuento'));
+  const sub=R2(Math.max(0,LIMPIO(attr(t,'SubTotal'))-desc)),total=R2(LIMPIO(attr(t,'Total')));
+  const fecha=attr(t,'Fecha')||(txt.match(/FechaTimbrado="([^"]+)"/i)||[])[1]||(txt.match(/\b(\d{4}-\d{2}-\d{2})T/)||[])[1]||'';
+  const serie=attr(t,'Serie'),folio=attr(t,'Folio');
+  const em=txt.match(/<(?:[\w-]+:)?Emisor\b[^>]*>/),rec=txt.match(/<(?:[\w-]+:)?Receptor\b[^>]*>/);
+  if(!em||!rec)return null;
+  const emRFC=attr(em[0],'Rfc'),emNom=attr(em[0],'Nombre'),recRFC=attr(rec[0],'Rfc'),recNom=attr(rec[0],'Nombre');
+  const u=txt.match(/UUID="([^"]+)"/i);const uuid=u?u[1]:'';
+  let iva=0,rISR=0,rIVA=0;
+  const cierre=txt.match(/<\/(?:[\w-]+:)?Conceptos>([\s\S]*)$/);
+  const zonaIVA=cierre?cierre[1]:txt;
+  let sum=cierre?0:1;
+  for(const m of zonaIVA.matchAll(/<(?:[\w-]+:)?Traslado\b[^>]*Impuesto="002"[^>]*>/g)){const a=m[0];if(attr(a,'TipoFactor').toUpperCase()==='TASA')iva+=+attr(a,'Importe')||0;sum=1;}
+  if(!sum)for(const m of txt.matchAll(/<(?:[\w-]+:)?Traslado\b[^>]*Impuesto="002"[^>]*>/g)){const a=m[0];if(attr(a,'TipoFactor').toUpperCase()==='TASA')iva+=+attr(a,'Importe')||0;}
+  for(const m of zonaIVA.matchAll(/<(?:[\w-]+:)?Retencion\b[^>]*>/g)){const a=m[0],imp=attr(a,'Impuesto');if(imp==='001')rISR+=+attr(a,'Importe')||0;if(imp==='002')rIVA+=+attr(a,'Importe')||0;}
+  let tip=null;
+  if(DB.miRFC){tip=emRFC===DB.miRFC?'ingreso':(recRFC===DB.miRFC?'egreso':null);}
+  if(!tip){tip=tipo==='E'?'egreso':'ingreso';}
+  return {tipo:tip,mes:mesDeFecha(fecha)||MESES[new Date().getMonth()],sinFecha:!fecha,fac:(serie?serie+'-':'')+folio,con:tip==='ingreso'?recNom:emNom,cli:recNom,sub,iva:R2(iva),rISR:R2(rISR),rIVA:R2(rIVA),total,fec:(fecha||'').slice(0,10),uuid,origen:'XML',emRFC,recRFC};
+}
+
+const RX_NOMBRE_LABEL=/Nombre\s+o\s+Raz[oó]n\s+Social\s*:\s*/gi;
+const RX_ETIQ_CONOCIDA=new RegExp('\\s(?:(?:Nombre\\s+o\\s+Raz[oó]n\\s+Social|RFC(?:\\s+d[eo]l)?(?:\\s+Emisor|\\s+Receptor)?|Fecha(?:\\s+d[eo])?\\s+Emisi[oó]n|Folio\\s+Fiscal|Uso\\s+d[eo]\\s+CFDI|Tipo\\s+d[eo]\\s+Comprobante|No\\.?\\s+d[eo]\\s+[Ss]erie|Retenci[oó]n(?:es)?|Trasladado(?:s)?|Observaciones|Parcialidad|Certificado|Sello|Cadena|Sistema|Ejercicio|Periodo|Moneda|Subtotal|Impuesto|Concepto|Descripci[oó]n|Cantidad|Importe|Residencia|CURP|Tasa|Cuota|Saldo|Monto|Hora|Fecha|Total|Folio|Serie|Clave|C\\.?P\\.?|Calle|Colonia|Uso|Tipo|IVA|Domicilio|R[eé]gimen|Estado|Efecto)(?:\\s+(?:Fiscal|Receptor|Emisor|Contribuyente|Comprobante|d[eo]l?|l[ao]|el|R[eé]gimen|CFDI))*)\\s*:','i');
+function nombresDeBloque(b){
+  const etiquetas=[...b.matchAll(RX_NOMBRE_LABEL)];
+  return etiquetas.map(m=>{
+    const resto=b.slice(m.index+m[0].length);
+    const corte=resto.search(RX_ETIQ_CONOCIDA);
+    const nombre=(corte>=0?resto.slice(0,corte):resto).replace(/\s+/g,' ').trim();
+    return nombre;
+  }).filter(n=>n);
+}
+
+async function parsePDF(buf){
+  try{
+    await loadScript('https://cdn.jsdelivr.net/npm/pdfjs-dist@3.11.174/build/pdf.min.js','sha384-/1qUCSGwTur9vjf/z9lmu/eCUYbpOTgSjmpbMQZ1/CtX2v/WcAIKqRv+U1DUCG6e');
+  }catch(e){
+    throw new Error('No se pudo cargar el lector PDF (se requiere internet). Usa el XML del SAT, es más exacto.');
+  }
+  pdfjsLib.GlobalWorkerOptions.workerSrc='https://cdn.jsdelivr.net/npm/pdfjs-dist@3.11.174/build/pdf.worker.min.js';
+
+  const pdf=await pdfjsLib.getDocument({data:buf}).promise;
+  const RX_UUID=/\b([0-9A-Fa-f]{8}-[0-9A-Fa-f]{4}-[0-9A-Fa-f]{4}-[0-9A-Fa-f]{4}-[0-9A-Fa-f]{12})\b/;
+  const bloques=[];
+  for(let i=1;i<=pdf.numPages;i++){
+    const p=await pdf.getPage(i);
+    const c=await p.getTextContent();
+    const pageTxt=c.items.map(x=>x.str).filter(s=>s&&s.trim()).join(' ').replace(/\s+/g,' ').trim();
+    if(!pageTxt)continue;
+    const conColon=[...pageTxt.matchAll(/Folio\s*Fiscal\s*:/gi)];
+    const cualquiera=[...pageTxt.matchAll(/Folio\s*Fiscal\s*:?\s*([0-9A-Fa-f-]{10,})/gi)];
+    if(conColon.length&&conColon.length===cualquiera.length){
+      cualquiera.forEach((m,k)=>bloques.push(pageTxt.slice(k===0?0:m.index,(k+1<cualquiera.length)?cualquiera[k+1].index:pageTxt.length)));
+    }else if(cualquiera.length||RX_UUID.test(pageTxt)){
+      bloques.push(pageTxt);
+    }else if(bloques.length){
+      bloques[bloques.length-1]+=' '+pageTxt;
+    }
+  }
+
+  const mi=(DB.miRFC||'').toUpperCase().trim();
+  const out=[];
+
+  for(const b of bloques){
+    const uuid=(b.match(RX_UUID)||[])[1]||(b.match(/Folio\s*Fiscal\s*:?\s*([0-9A-Fa-f-]{10,})/i)||[])[1]||'';
+    const rfcEmisor=(b.match(/RFC\s*Emisor\s*:?\s*([A-ZÑ&0-9]{12,13})/i)||[])[1]
+      ||(b.match(/R\.?\s?F\.?\s?C\.?[:\s]*([A-ZÑ&0-9]{12,13})/i)||[])[1]||'';
+    let rfcReceptor=(b.match(/RFC\s*Receptor\s*:?\s*([A-ZÑ&0-9]{12,13})/i)||[])[1]||'';
+    if(!rfcReceptor){
+      const todos=[...b.matchAll(/\bRFC\b[:\s]*([A-ZÑ&0-9]{12,13})/gi)].map(m=>m[1].toUpperCase().trim());
+      const cand=todos.find(r=>r!==rfcEmisor.toUpperCase().trim());
+      if(cand)rfcReceptor=cand;
+    }
+
+    const nombres=nombresDeBloque(b);
+    let nombreEmisor='',nombreReceptor='';
+    if(nombres.length>=2){nombreEmisor=nombres[0];nombreReceptor=nombres[1];}
+    else if(nombres.length===1){
+      const pR=b.search(/RFC\s+Receptor/i),pN=b.search(/Nombre\s+o\s+Raz[oó]n\s+Social/i);
+      if(pR>=0&&pN>=0&&pN>pR)nombreReceptor=nombres[0];
+      else nombreEmisor=nombres[0];
+    }
+    if(!nombreEmisor){
+      const pre=(b.split(/R\.?\s?F\.?\s?C\.?/i)[0]||'').trim();
+      const w=pre.split(/\s+/).filter(Boolean);
+      const cand=w.slice(-5).join(' ').replace(/[^A-Za-zÑñ&0-9 .,&\-]/g,'').trim();
+      if(cand)nombreEmisor=cand;
+    }
+    if(!nombreReceptor){
+      const m=b.match(/\bCliente\b[:\s]*([A-ZÑ&0-9][A-ZÑ&0-9 .,&\-]{1,60}?)(?=\s+(?:RFC|Domicilio|Uso\s+CFDI|R\.?\s?F\.?\s?C\.?|Fecha)\b)/i);
+      if(m)nombreReceptor=m[1].trim();
+    }
+
+    let total=0;
+    const tots=[...b.matchAll(/\bTotal\b\s*:?\s*\$?\s*([0-9][0-9,]*(?:\.\d{1,2})?)/gi)];
+    if(tots.length)total=LIMPIO(tots[tots.length-1][1]);
+    if(!(total>0))continue;
+
+    const subM=(b.match(/Subtotal\s*(?:-\s*Desc)?\s*:?\s*\$?\s*([0-9][0-9,]*\.\d{2})/i)||[])[1];
+    const subExacto=!!subM;
+    const ivaM=(b.match(/Imp\.?\s*Tras[a-z.]*\s*:?\s*\$?\s*([0-9][0-9,]*\.\d{2})/i)||[])[1];
+    let sub,iva;
+    if(subM){sub=LIMPIO(subM);iva=ivaM?LIMPIO(ivaM):Math.max(total-sub,0);}
+    else{sub=total/(1+IVA_TASA);iva=total-sub;}
+
+    let rISR=LIMPIO((b.match(/Retenci[oó]n(?:es)?[^$]{0,150}001[^$]{0,150}\$?\s*([0-9][0-9,]*\.\d{2})/i)||[])[1]||0);
+    let rIVA=LIMPIO((b.match(/Retenci[oó]n(?:es)?[^$]{0,150}002[^$]{0,150}\$?\s*([0-9][0-9,]*\.\d{2})/i)||[])[1]||0);
+
+    let fechaStr=(b.match(/Fecha[^:\n]{0,16}(?:Emisi[oó]n|Expedici[oó]n)\s*:?\s*(\d{4}-\d{2}-\d{2})/i)||[])[1]||'';
+    if(!fechaStr){
+      const dm=b.match(/Fecha[^:\n]{0,16}(?:Emisi[oó]n|Expedici[oó]n)\s*:?\s*(\d{1,2})[-\/](\d{1,2})[-\/](\d{4})/i);
+      if(dm)fechaStr=dm[3]+'-'+String(+dm[2]).padStart(2,'0')+'-'+String(+dm[1]).padStart(2,'0');
+    }
+    if(!fechaStr)fechaStr=(b.match(/\b(\d{4})-(\d{2})-(\d{2})\b/)||[])[0]||'';
+    const iso=(fechaStr||'').match(/(\d{4})-(\d{2})-(\d{2})/);
+    const y=iso?+iso[1]:new Date().getFullYear();
+    const mNum=iso?+iso[2]:(new Date().getMonth()+1);
+    const dNum=iso?+iso[3]:new Date().getDate();
+    const fec=`${y}-${String(mNum).padStart(2,'0')}-${String(dNum).padStart(2,'0')}`;
+    const mes=MESES[Math.max(0,Math.min(11,mNum-1))];
+
+    const facM=(b.match(/Serie\s*-?\s*Folio\s*:?\s*([A-Z0-9][A-Z0-9-]*[0-9])/i)||[])[1]||'';
+    const tipoComp=(b.match(/Tipo\s+de\s+Comprobante\s*:?\s*([IE])/i)||[])[1]||'';
+    let tipo=null;
+    if(mi&&rfcEmisor&&rfcEmisor.toUpperCase().trim()===mi)tipo='ingreso';
+    else if(mi&&rfcReceptor&&rfcReceptor.toUpperCase().trim()===mi)tipo='egreso';
+    else if(tipoComp==='I')tipo='ingreso';
+    else if(tipoComp==='E')tipo='egreso';
+    else tipo='ingreso';
+
+    sub=Math.round(sub*100)/100;iva=Math.round(iva*100)/100;
+    if(tipo==='ingreso'){
+      out.push({tipo,mes,sinFecha:!iso,uuid,fac:facM||uuid||'',cli:nombreReceptor||'—',con:'',fec,sub,iva,rISR,rIVA,total,est:!subExacto,origen:'PDF'});
+    }else{
+      out.push({tipo,mes,sinFecha:!iso,uuid,fac:facM||uuid||'',cli:'',con:nombreEmisor||'—',fec,sub,iva,rISR,rIVA,total,est:!subExacto,origen:'PDF'});
+    }
+  }
+
+  const seen=new Set();
+  return out.filter(x=>{
+    const k=x.uuid||(x.tipo+'-'+x.fec+'-'+x.total+'-'+x.sub);
+    if(seen.has(k))return false;
+    seen.add(k);return true;
+  });
+}
+
+function esMes(v){const s=String(v||'').toUpperCase().trim();return MESES.find(m=>m.startsWith(s.slice(0,4))&&s.length>=3)||null;}
+function parseExcelFile(buf){
+  const wb=XLSX.read(buf,{type:'array',cellDates:true});
+  const out=[];
+  for(const name of wb.SheetNames){
+    const rows=XLSX.utils.sheet_to_json(wb.Sheets[name],{header:1,raw:true,defval:null});
+    if(/ingreso/i.test(name))parseIngSheet(rows,out);
+    else if(/egreso/i.test(name))parseEgrSheet(rows,out);
+  }
+  return out;
+}
+function findCol(row,re){for(let i=0;i<row.length;i++)if(re.test(String(row[i]||'')))return i;return -1;}
+function parseIngSheet(rows,out){
+  let mes=null,hdr=null;
+  for(const row of rows){
+    const m=row.find(c=>esMes(c));if(m)mes=esMes(m);
+    if(String(row.find(c=>/factura/i.test(String(c||'')))||'')&&/cliente/i.test(JSON.stringify(row))){
+      hdr={fac:findCol(row,/factura/i),cli:findCol(row,/cliente/i),sub:findCol(row,/subtotal/i),iva:findCol(row,/^iva/i),tot:findCol(row,/total con iva/i),risr:findCol(row,/ret.*isr/i),riva:findCol(row,/ret.*iva/i)};
+      if(hdr.fac<0||hdr.sub<0)hdr=null;continue;
+    }
+    if(!hdr||!mes)continue;
+    if(row.some(c=>/^total$/i.test(String(c||'').trim())))continue;
+    const sub=LIMPIO(row[hdr.sub]);
+    const fac=row[hdr.fac];
+    const iva=hdr.iva>=0?LIMPIO(row[hdr.iva]):0;
+    if(!(sub>0)&&!(iva>0))continue;
+    if(fac&&esMes(fac))continue;
+    const risr=hdr.risr>=0?LIMPIO(row[hdr.risr]):0,riva=hdr.riva>=0?LIMPIO(row[hdr.riva]):0;
+    out.push({tipo:'ingreso',mes,fac:String(fac||''),cli:String(row[hdr.cli]||''),sub,iva,rISR:risr,rIVA:riva,total:sub+iva,uuid:'XLS-'+mes+'-'+fac+'-'+sub,origen:'Excel'});
+  }
+}
+
+function parseEgrSheet(rows,out){
+  for(let r=0;r<rows.length;r++){
+    const row=rows[r];
+    if(!row.some(c=>/proveedor/i.test(String(c||''))))continue;
+    for(let c=0;c<row.length;c++){
+      if(!/fecha/i.test(String(row[c]||'')))continue;
+      let mes=null;
+      for(let u=r;u>=0&&mes===null;u--){const m=rows[u].slice(c,c+4).find(x=>esMes(x));if(m)mes=esMes(m);}
+      const iCon=c+1,iSub=c+2,iIva=c+3;
+      for(let d=r+1;d<rows.length;d++){
+        const dr=rows[d];if(!dr)break;
+        if(String(dr[c]||'').trim().toLowerCase()==='total')break;
+        const sub=LIMPIO(dr[iSub]),con=dr[iCon];
+        if(!(sub>0)&&!con)continue;
+        const fec=dr[c] instanceof Date?dr[c].toISOString().slice(0,10):String(dr[c]||'');
+        const iva=LIMPIO(dr[iIva]);
+        out.push({tipo:'egreso',mes:mes||MESES[0],fac:'',con:String(con||''),cli:'',sub,iva,rISR:0,rIVA:0,total:sub+iva,fec,uuid:'XLS-'+(mes||'')+'-'+con+'-'+sub+'-'+fec,origen:'Excel'});
+      }
+    }
+  }
+}
+
+// ===== Duplicados con autoreparación =====
+function existeRegistro(p){
+  const uuid=(p.uuid||'').toUpperCase();
+  if(uuid&&(DB.ingresos.some(x=>(x.uuid||'').toUpperCase()===uuid)||DB.egresos.some(x=>(x.uuid||'').toUpperCase()===uuid)))return true;
+  const clave=x=>((x.fac||x.con||'')+'|'+(x.fec||'')+'|'+(+x.total||0).toFixed(2)).toUpperCase();
+  const pc=clave(p);
+  if(pc==='||0.00')return false;
+  return DB.ingresos.some(x=>clave(x)===pc)||DB.egresos.some(x=>clave(x)===pc);
+}
+
+function purgaImportados(){
+  if(!DB.importados)return;
+  const vive=u=>DB.ingresos.some(x=>String(x.uuid||'').toUpperCase()===String(u||'').toUpperCase())||DB.egresos.some(x=>String(x.uuid||'').toUpperCase()===String(u||'').toUpperCase());
+  const antes=DB.importados.length;
+  DB.importados=DB.importados.filter(u=>u&&vive(u));
+  if(DB.importados.length!==antes)persist();
+}
+
+async function handleFiles(files){
+  purgaImportados();
+  const log=[];let n=0;
+  for(const file of files){
+    try{
+      let rows=[];
+      if(/\.xml$/i.test(file.name)){
+        const txt=await file.text();const p=parseCFDI(txt);
+        if(!p)throw new Error('No parece un CFDI válido');rows=[p];
+      }else if(/\.pdf$/i.test(file.name)){
+        rows=await parsePDF(await file.arrayBuffer());
+      }else if(/\.(xlsx|xls|csv)$/i.test(file.name)){
+        try{await loadScript('https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js','sha384-vtjasyidUo0kW94K5MXDXntzOJpQgBKXmE7e2Ga4LG0skTTLeBi97eFAXsqewJjw');}catch(e){throw new Error('No se pudo cargar el lector de Excel (se requiere internet)');}
+        rows=parseExcelFile(new Uint8Array(await file.arrayBuffer()));
+      }else{throw new Error('Tipo de archivo no soportado');}
+      let dups=0;
+      const nuevos=rows.filter(p=>{if(!p||(!(p.sub>0)&&!(p.total>0)))return false;
+        if(existeRegistro(p)){dups++;log.push('⚠ '+file.name+': YA está registrada en la tabla ('+(p.fac||p.uuid)+'), se omitió — bórrala primero si quieres volver a cargarla');return false;}return true;});
+      nuevos.forEach(p=>{if(p.sinFecha)log.push('⚠ '+file.name+': sin fecha detectable, se asignó a '+p.mes+' — verifica mes y fecha');if(p.est)log.push('⚠ '+file.name+': subtotal no visible en el PDF, estimado al 16% — verifícalo en la vista previa');});
+      nuevos.forEach(p=>PREVIEW.push(p));
+      if(dups&&!nuevos.length)toast('⚠ '+file.name+': ya estaba importada, se omitió');
+      log.push('✔ '+file.name+': '+nuevos.length+' registro(s) nuevo(s)'+(dups?' · '+dups+' duplicada(s) omitida(s)':''));n+=nuevos.length;
+    }catch(err){log.push('✖ '+file.name+': '+err.message);}
+  }
+  document.getElementById('logCard').style.display='block';
+  document.getElementById('log').innerHTML=log.map(l=>'<div>'+esc(l)+'</div>').join('');
+  renderPreview();
+  if(n)toast(n+' registro(s) listos para confirmar');
+}
+
+function renderPreview(){
+  const card=document.getElementById('prevCard');
+  if(!PREVIEW.length){card.style.display='none';return;}
+  card.style.display='block';
+  document.getElementById('tbl-prev').innerHTML=`<thead><tr><th>¿Importar?</th><th>Tipo</th><th>Mes</th><th>Fecha</th><th>Factura</th><th>Cliente / Proveedor</th><th class="num">Subtotal</th><th class="num">IVA</th><th class="num">Ret. ISR</th><th class="num">Ret. IVA</th><th class="num">Total</th><th>Origen</th></tr></thead><tbody>`+
+  PREVIEW.map((p,i)=>`<tr><td style="text-align:center"><input type="checkbox" ${p.ok===false?'':'checked'} onchange="PREVIEW[${i}].ok=this.checked"></td>
+  <td><select onchange="PREVIEW[${i}].tipo=this.value;renderPreview()"><option value="ingreso"${p.tipo==='ingreso'?' selected':''}>Ingreso</option><option value="egreso"${p.tipo==='egreso'?' selected':''}>Egreso</option></select></td>
+  <td><select onchange="PREVIEW[${i}].mes=this.value">${MESES.map(m=>`<option${m===p.mes?' selected':''}>${m}</option>`).join('')}</select></td>
+  <td><input placeholder="AAAA-MM-DD" value="${esc(p.fec||'')}" onchange="PREVIEW[${i}].fec=this.value"></td>
+  <td><input value="${esc(p.fac||'')}" onchange="PREVIEW[${i}].fac=this.value"></td>
+  <td><input value="${esc((p.tipo==='ingreso'?(p.cli||p.con):(p.con||p.cli))||'')}" onchange="PREVIEW[${i}].cli=PREVIEW[${i}].con=this.value"></td>
+  <td><input type="number" step="0.01" value="${p.sub}" onchange="PREVIEW[${i}].sub=R2(this.value);PREVIEW[${i}].total=R2(PREVIEW[${i}].sub+PREVIEW[${i}].iva);renderPreview()"></td>
+  <td><input type="number" step="0.01" value="${p.iva}" onchange="PREVIEW[${i}].iva=R2(this.value);PREVIEW[${i}].total=R2(PREVIEW[${i}].sub+PREVIEW[${i}].iva);renderPreview()"></td>
+  <td><input type="number" step="0.01" value="${p.rISR||0}" onchange="PREVIEW[${i}].rISR=R2(this.value)"></td>
+  <td><input type="number" step="0.01" value="${p.rIVA||0}" onchange="PREVIEW[${i}].rIVA=R2(this.value)"></td>
+  <td class="num"><b>${f(p.total)}</b></td><td><span class="badge badge-info" title="${p.est?'Subtotal/IVA estimados (no visibles en el PDF), verifica antes de importar':'Origen del registro'}">${esc(p.origen)}${p.est?' ⚠':''}</span></td></tr>`).join('')+'</tbody>';
+}
+
+function confirmImport(){
+  if(!PREVIEW.filter(p=>p.ok!==false).length)return;
+  pushHistoria();
+  let n=0;
+  PREVIEW.filter(p=>p.ok!==false).forEach(p=>{
+    DB.importados=DB.importados||[];
+    if(p.uuid)DB.importados.push(p.uuid);
+    if(p.tipo==='ingreso')DB.ingresos.push({
+      id:Date.now()+Math.random(),
+      mes:p.mes,
+      fac:p.fac,
+      cli:p.cli||p.con,
+      sub:p.sub,
+      iva:p.iva,
+      total:p.sub+p.iva,
+      risr:p.rISR||0,
+      riva:p.rIVA||0,
+      fec:p.fec||'',
+      uuid:p.uuid||''
+    });
+    else DB.egresos.push({id:Date.now()+Math.random(),mes:p.mes,fec:p.fec||'',con:p.con||p.cli,sub:p.sub,iva:p.iva,total:p.sub+p.iva,uuid:p.uuid||''});
+    n++;
+  });
+  PREVIEW=[];renderPreview();persist();render();
+  toast(n+' registro(s) importados exitosamente');
+}
+
+async function importSATPdfFiles(files, tipoObjetivo, mesForzado){
+  purgaImportados();
+  pushHistoria();
+  let nuevos=0;
+  const log=[];
+
+  for(const file of files){
+    try{
+      let registros=[];
+      if(/\.xml$/i.test(file.name)){
+        const p=parseCFDI(await file.text());
+        if(!p)throw new Error('No parece un CFDI válido');
+        registros=[p];
+      }else{
+        registros=await parsePDF(await file.arrayBuffer());
+      }
+
+      if(mesForzado){registros.forEach(p=>{p.mes=mesForzado;});}
+
+      if(!registros.length){
+        log.push('⚠ '+file.name+': no se detectaron CFDI en el archivo');
+        continue;
+      }
+
+      for(const p of registros){
+        if(tipoObjetivo==='ing'&&p.tipo!=='ingreso'){
+          log.push('⚠ '+file.name+': CFDI detectado como egreso (se omitió)');
+          continue;
+        }
+        if(tipoObjetivo==='egr'&&p.tipo!=='egreso'){
+          log.push('⚠ '+file.name+': CFDI detectado como ingreso (se omitió)');
+          continue;
+        }
+
+        if(existeRegistro(p)){
+          log.push('⚠ '+file.name+': YA está registrada en la tabla ('+(p.fac||p.uuid)+'), se omitió — bórrala primero si quieres volver a cargarla');
+          continue;
+        }
+
+        if(p.sinFecha)log.push('⚠ '+file.name+': sin fecha detectable, se asignó a '+p.mes+' — verifica mes y fecha');
+        if(p.est)log.push('⚠ '+file.name+': subtotal no visible en el PDF, estimado al 16% — verifícalo en la tabla');
+
+        DB.importados=DB.importados||[];
+        if(p.uuid)DB.importados.push(p.uuid);
+
+        if(p.tipo==='ingreso'){
+          DB.ingresos.push({
+            id:Date.now()+Math.random(),
+            mes:p.mes,
+            fac:p.fac,
+            cli:p.cli,
+            sub:p.sub,
+            iva:p.iva,
+            total:p.sub+p.iva,
+            risr:p.rISR||0,
+            riva:p.rIVA||0,
+            fec:p.fec,
+            uuid:p.uuid||''
+          });
+        }else{
+          DB.egresos.push({
+            id:Date.now()+Math.random(),
+            mes:p.mes,
+            fec:p.fec,
+            con:p.con,
+            sub:p.sub,
+            iva:p.iva,
+            total:p.sub+p.iva,
+            uuid:p.uuid||''
+          });
+        }
+
+        nuevos++;
+        log.push('✔ '+file.name+': '+(p.tipo==='ingreso'?'Ingreso':'Egreso')+' importado en '+p.mes);
+      }
+    }catch(err){
+      log.push('✖ '+file.name+': '+(err.message||err));
+    }
+  }
+
+  if(!nuevos)HISTORIA.pop();
+  persist();
+  render();
+  if(nuevos)toast(nuevos+' registro(s) importados');
+  return log;
+}
+
+// ===== Importar PDF/XML SAT por mes =====
+function buildImportButtons(){
+  const secciones=[
+    {sel:'mes-pdf-ing',btn:'btn-pdf-ing',tipo:'ing'},
+    {sel:'mes-pdf-egr',btn:'btn-pdf-egr',tipo:'egr'}
+  ];
+  secciones.forEach(s=>{
+    const sel=document.getElementById(s.sel);
+    if(sel){
+      sel.innerHTML='';
+      MESES.forEach(m=>{
+        const o=document.createElement('option');
+        o.value=o.textContent=m;
+        sel.appendChild(o);
+      });
+      sel.value=MESES[new Date().getMonth()];
+    }
+    const btn=document.getElementById(s.btn);
+    if(!btn)return;
+    let input=null;
+    btn.onclick=()=>{
+      if(!input){
+        input=document.createElement('input');
+        input.type='file';
+        input.accept='.pdf,.xml';
+        input.multiple=true;
+        input.hidden=true;
+        input.onchange=async e=>{
+          const files=[...e.target.files];
+          e.target.value='';
+          if(!files.length)return;
+          const mes=sel?sel.value:null;
+          const log=await importSATPdfFiles(files,s.tipo,mes);
+          const logBox=document.getElementById('pdf-'+s.tipo+'-log');
+          if(logBox){logBox.style.display='block';logBox.innerHTML=log.map(l=>'<div>'+esc(l)+'</div>').join('');}
+        };
+      }
+      input.click();
+    };
+  });
+}
+
+// ===== Inicialización de Eventos y Selectores =====
+document.querySelectorAll('nav button').forEach(b=>b.onclick=()=>{
+  document.querySelectorAll('nav button').forEach(x=>x.classList.remove('active'));
+  document.querySelectorAll('section').forEach(x=>x.classList.remove('active'));
+  b.classList.add('active');
+  document.getElementById('sec-'+b.dataset.t).classList.add('active');
+});
+
+MESES.forEach(m=>{
+  ['i-mes','e-mes','r-mes','mes-donut'].forEach(id=>{
+    const el=document.getElementById(id);
+    if(el){
+      const o=document.createElement('option');
+      o.value=o.textContent=m;
+      el.appendChild(o);
+    }
+  });
+});
+
+const curMonthName=MESES[new Date().getMonth()];
+document.getElementById('mes-donut').value=curMonthName;
+document.getElementById('i-mes').value=curMonthName;
+document.getElementById('e-mes').value=curMonthName;
+
+['fmes-ing','fmes-egr'].forEach(id=>{
+  const sel=document.getElementById(id);
+  const t=document.createElement('option');
+  t.value='TODOS';
+  t.textContent='📅 Todos los meses (Anual)';
+  sel.appendChild(t);
+  MESES.forEach(m=>{
+    const o=document.createElement('option');
+    o.value=o.textContent=m;
+    sel.appendChild(o);
+  });
+  sel.value=curMonthName;
+});
+
+document.getElementById('r-fec').value=new Date().toISOString().slice(0,10);
+
+// Sincronizar automáticamente el selector de mes cuando el usuario elige una fecha en Ingresos o Egresos
+[['i-fec','i-mes'],['e-fec','e-mes']].forEach(([fId,mId])=>{
+  const fEl=document.getElementById(fId),mEl=document.getElementById(mId);
+  if(fEl&&mEl)fEl.addEventListener('change',()=>{if(fEl.value)mEl.value=mesDeFecha(fEl.value);});
+});
+
+['i-sub','e-sub','e-iva'].forEach(id=>{
+  const el=document.getElementById(id);
+  if(el)el.addEventListener('keydown',e=>{if(e.key==='Enter')e.target.closest('.card').querySelector('.btn').click();});
+});
+
+const dz=document.getElementById('drop'),fi=document.getElementById('fileIn');
+dz.onclick=()=>fi.click();
+fi.onchange=e=>{handleFiles([...e.target.files]);e.target.value='';};
+dz.ondragover=e=>{e.preventDefault();dz.style.opacity='0.85';};
+dz.ondragleave=()=>{dz.style.opacity='1';};
+dz.ondrop=e=>{e.preventDefault();dz.style.opacity='1';handleFiles([...e.dataTransfer.files]);};
+
+document.addEventListener('keydown',e=>{
+  if((e.ctrlKey||e.metaKey)&&!e.altKey&&String(e.key).toLowerCase()==='z'){
+    const t=e.target;
+    if(t&&(t.tagName==='INPUT'||t.tagName==='TEXTAREA'||t.tagName==='SELECT'))return;
+    e.preventDefault();deshacer();
+  }
+});
+
+initTheme();
+load();
+document.getElementById('miRFC').value=DB.miRFC||'';
+buildImportButtons();
+render();
+</script>
+</body>
+</html>
