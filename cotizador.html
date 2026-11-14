@@ -277,8 +277,8 @@
     .tabla-partidas td.col-cant input { font-size: 0.82rem; font-weight: 600; text-align: center !important; }
     .tabla-partidas td.col-unidad select { font-size: 0.7rem !important; font-weight: 700; padding: 5px 0 !important; letter-spacing: -0.2px; appearance: none; -webkit-appearance: none; -moz-appearance: none; text-align: center; text-align-last: center; cursor: pointer; }
     .inp-pu { text-align: right !important; font-size: 0.85rem !important; font-variant-numeric: tabular-nums; }
-    input[type=number]::-webkit-inner-spin-button, input[type=number]::-webkit-outer-spin-button { -webkit-appearance: none; margin: 0; }
-    input[type=number] { -moz-appearance: textfield; appearance: textfield; }
+    input[type=number]::-webkit-inner-spin-button, input[type=number]::-webkit-outer-spin-button { -webkit-appearance: none !important; appearance: none !important; display: none !important; margin: 0 !important; }
+    input[type=number] { -moz-appearance: textfield !important; appearance: textfield !important; }
     .importe-readonly { text-align: right !important; font-weight: 700; color: var(--text); pointer-events: none; font-size: 0.86rem !important; font-variant-numeric: tabular-nums; }
     .btn-del-row { background: #fee2e2; color: var(--danger); border: none; border-radius: 6px; padding: 4px 7px; cursor: pointer; font-weight: bold; font-size: 0.75rem; touch-action: manipulation; transition: background-color 0.12s var(--ease); }
     .btn-del-row:hover { background: #fecaca; }
@@ -5935,9 +5935,17 @@
     document.title = obtenerTituloDocumentoPDF();
     sincronizarVigenciaTxt();
     ajustarTamanoNombreEmpresa(true);
+    document.querySelectorAll('input[type="number"]').forEach(function(inp) {
+      inp.setAttribute("data-print-numeric", "1");
+      inp.type = "text";
+    });
   });
 
   window.addEventListener("afterprint", function() {
+    document.querySelectorAll('input[data-print-numeric="1"]').forEach(function(inp) {
+      inp.removeAttribute("data-print-numeric");
+      inp.type = "number";
+    });
     actualizarTituloConEmpresa();
     ajustarTamanoNombreEmpresa(false);
   });
