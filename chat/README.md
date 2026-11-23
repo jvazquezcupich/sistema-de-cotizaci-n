@@ -1,45 +1,70 @@
-# Chat con Mistral
+# Chat Mistral · Multicotizador
 
-App web mínima con una interfaz de chat que llama a la API de Mistral desde el servidor usando el SDK oficial de TypeScript (`@mistralai/mistralai`), con el modelo `mistral-small-latest`.
+App web mínima con interfaz de chat que llama a la API de Mistral usando el SDK oficial de TypeScript (`@mistralai/mistralai`) con el modelo `mistral-small-latest`.
+
+La clave `MISTRAL_API_KEY` vive **solo en el servidor** (variable de entorno / archivo `.env`, ignorado por git). El navegador nunca ve la clave: solo llama al endpoint local `/api/chat`.
+
+## Requisitos
+
+- Node.js 20 o superior (probado con Node 22)
+
+## Instalación de dependencias
+
+```bash
+npm install
+```
+
+## Configuración
+
+```bash
+cp .env.example .env
+```
+
+Edita `.env` y añade tu clave de Mistral (consíguela en [Mistral AI Console](https://console.mistral.ai/)):
+
+```
+MISTRAL_API_KEY=tu-api-key-de-mistral
+PORT=3000
+```
+
+## Ejecutar en local
+
+Modo desarrollo (con recarga automática):
+
+```bash
+npm run dev
+```
+
+Modo producción:
+
+```bash
+npm run build
+npm start
+```
+
+Abre <http://localhost:3000> (o el puerto definido en `PORT`).
+
+## Probar la API directamente
+
+```bash
+curl -X POST http://localhost:3000/api/chat \
+  -H "Content-Type: application/json" \
+  -d '{"messages":[{"role":"user","content":"Hola, ¿qué seguros puedo cotizar?"}]}'
+```
+
+Respuesta: `{"reply":"..."}`
 
 ## Estructura
 
-```
-chat/
-├── server.js          # Servidor Express + SDK de Mistral (la clave nunca sale del servidor)
-├── public/index.html  # Interfaz de chat
-├── .env.example       # Plantilla de variables de entorno
-└── package.json
-```
+- `src/server.ts` — servidor HTTP en Node (sin framework) en TypeScript: sirve los estáticos de `public/` y atiende `POST /api/chat` llamando a Mistral con el SDK oficial.
+- `public/index.html`, `public/app.js`, `public/styles.css` — interfaz de chat sencilla (HTML/CSS/JS vanilla, en español).
+- `.env.example` — plantilla de variables de entorno.
+- `tsconfig.json` — configuración de TypeScript (compila a `dist/`).
 
-## Puesta en marcha
+Dentro de este repositorio la app vive en `chat/`; el cotizador (`cotizador.html`) está en la raíz del repo. Para servir ambos desde el mismo servidor, copia `cotizador.html` a `chat/public/` y ábrelo en `/cotizador.html`.
 
-1. Instala dependencias:
+## Seguridad
 
-   ```bash
-   cd chat
-   npm install
-   ```
-
-2. Configura tu clave de API (queda solo en el servidor):
-
-   ```bash
-   cp .env.example .env
-   # Edita .env y sustituye "tu_clave_aqui" por tu clave real de https://console.mistral.ai/
-   ```
-
-3. Arranca en local:
-
-   ```bash
-   npm run dev   # modo desarrollo (reinicia al guardar)
-   # o
-   npm start     # modo normal
-   ```
-
-4. Abre <http://localhost:3000> y escribe en el chat.
-
-## Cómo funciona
-
-- El navegador nunca ve la clave: solo habla con `POST /api/chat` del servidor Express.
-- El servidor crea el cliente con `new Mistral({ apiKey: process.env.MISTRAL_API_KEY })` y responde con `mistral-small-latest` manteniendo un pequeño historial de la conversación en memoria.
-- `.env` está en `.gitignore` para que la clave no se suba al repositorio.
+- `MISTRAL_API_KEY` se lee únicamente en el servidor desde `process.env`; no se expone al cliente ni se registra.
+- `.env` está en `.gitignore`.
+- El frontend usa una CSP restrictiva (`connect-src 'self'`) y el servidor valida el formato, el número y la longitud de los mensajes.
